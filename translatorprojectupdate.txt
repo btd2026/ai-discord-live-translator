@@ -1,0 +1,555 @@
+# Create a comprehensive project handbook as a plain-text file
+
+import textwrap, datetime, os, json, sys, pathlib
+
+title = "Discord Voice Translator — Full Technical Handbook (Backend + Frontend)"
+subtitle = "From First Bot Prototype to Whisper-Powered MVP, with Architecture, Rationale, Research, and Roadmap"
+date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+sections = []
+
+def add_section(title, body):
+    sections.append(f"{title}\n{'='*len(title)}\n{body}\n")
+
+wrap = lambda s: textwrap.fill(s, width=92, replace_whitespace=False)
+
+# --- Preface / Executive summary ---
+preface = f"""
+This document is a long-form, narrative + technical handbook for the Discord Voice Translator
+project. It is intended to give any new engineer (or AI coding agent) *more than enough* context
+to understand the current implementation, the decisions that led here, and the near-term plan to
+ship a Windows-first, ultra-lightweight overlay that displays real-time, per-speaker captions
+translated into the local user's preferred language.
+
+The handbook starts before we had any backend—at the very beginning with a minimal Discord bot
+that could join a voice channel and capture audio—then walks chronologically through each major
+iteration up to our current Whisper-powered MVP with per-client language preferences and text
+polishing. It also covers the frontend overlay vision and current state, the WebSocket protocol
+between backend and overlay, a deep dive into third-party model research and cost/accuracy
+tradeoffs, and a pragmatic roadmap to MVP launch and beyond.
+
+This file intentionally avoids including any live secrets (e.g., API keys). Those should reside
+in the local `.env` file and remain uncommitted.
+"""
+add_section("Executive Summary", wrap(preface))
+
+# --- Timeline & milestones ---
+timeline = """
+• Seed idea: “Turn any Discord voice call into clean, readable captions that translate for each
+  participant, in a lightweight overlay that feels like a Rainmeter skin.”
+
+• First prototype (no real backend):
+  - Minimal `discord.js` bot with `@discordjs/voice` to join a voice channel.
+  - Captured incoming audio per user via the voice receiver; decoded Opus to 48 kHz PCM with
+    `prism-media` and (later) `@discordjs/opus` for improved decoding accuracy.
+  - Wrote a tiny `AudioBufferer` to segment per-speaker PCM into clips suitable for transcription.
+  - Printed recognized text to the console; no UI yet.
+
+• Early overlay concept:
+  - Added a tiny WebSocket broadcaster (`ws.js`) so any client could subscribe to captions and
+    display them. This established the separation of concerns (backend inference vs frontend UI).
+
+• GPT-4o-transcribe phase:
+  - Used OpenAI’s `audio.transcriptions.create` with a WAV-wrapped chunk to get text.
+  - Found it workable, but cost and latency were concerns for long sessions.
+  - Accuracy for multilingual calls varied; forced language helped sometimes, but hurt others.
+
+• Whisper phase (current MVP path):
+  - Switched STT to OpenAI Whisper models for better English accuracy and reasonable cost.
+  - Introduced per-client translation via WS layer: each overlay/UI sets its own `targetLang`.
+  - Added text-cleanup: local heuristics + optional small LLM rewrite to produce clean lines.
+  - Hardened the audio pipeline: longer silence gating, larger chunk sizes, removed listener leak
+    warnings, stabilized decoder errors.
+  - Implemented `sendFinalizeRaw` fan-out to apply translation on a per-client basis without
+    re-running STT.
+
+• Frontend WPF overlay (Windows-first):
+  - Click-through translucent window, always-on-top, rounded corners, minimal GPU usage.
+  - Displays per-speaker lines with stable positioning; receives `caption`/`update`/`finalize`
+    messages over WS, uses `setPrefs` for per-user language selection.
+
+• Current objective:
+  - Ship MVP that is accurate, low-latency, and easy to install (single .exe frontend + Node-based
+    backend), with toggles for language, translation, and latency-vs-quality preferences.
+"""
+add_section("Project Timeline & Milestones", wrap(timeline))
+
+# --- Architecture overview ---
+arch = """
+At a high level, the system is split into two independent apps:
+
+1) Backend (Node.js):
+   - Discord bot that joins voice channels and captures inbound audio per speaker.
+   - Audio pipeline: Opus (Discord) → PCM 48 kHz mono → per-user chunking.
+   - Speech-to-Text (STT): Whisper model via OpenAI API (wrapped WAV file).
+   - Text cleanup: Quickly polish transcripts to reduce punctuation/spacing noise and trivial
+     hallucinations; optionally apply a cheap LLM rewriter pass for readability.
+   - Translation: Per-client translation, not global—each UI subscriber specifies its desired
+     `targetLang`. The backend broadcasts one clean source text per event, and the WS layer
+     translates individually.
+   - WebSocket server: Broadcasts events to any connected overlay client; accepts `setPrefs`
+     messages to store per-socket preferences (translate on/off, targetLang, optional langHint).
+
+2) Frontend (Windows WPF overlay):
+   - Lightweight, always-on-top, translucent window with per-speaker color-coded lines.
+   - Connects to backend via WebSocket; receives `caption` (interim), `update` (interim edits),
+     and `finalize` (final line). Removes finalized entries on demand or when a speaker starts
+     something new.
+   - Exposes a tiny settings UI for local preferences that are sent to the backend with `setPrefs`.
+   - Keeps CPU/GPU usage low: simple text rendering, minimal animation, pre-allocated resources,
+     no heavy webview/Electron.
+"""
+add_section("System Architecture (Backend + Frontend)", wrap(arch))
+
+# --- Data flow ---
+flow = """
+Voice Data Path (Discord → UI):
+
+1) Discord voice gateway delivers Opus frames per speaking user.
+2) `@discordjs/voice` receiver subscribes to each active speaker; end-of-utterance is detected by
+   silence (configurable `SILENCE_MS`, e.g., 900 ms).
+3) `prism-media` decodes Opus to PCM. With `@discordjs/opus` installed, decoding is more robust.
+4) `AudioBufferer` accumulates PCM per user between ~`MIN_CHUNK_MS` and `MAX_CHUNK_MS` (e.g., 1.2–2.2 s).
+   This trades off speed vs context (longer chunks → better punctuation and fewer “chopped” phrases).
+5) When a chunk is ready, the backend wraps raw PCM into a small WAV (48kHz/mono, 16-bit) and calls
+   Whisper for transcription. An interim UI update may be sent from the last ~1 s of audio while the
+   full chunk is being transcribed.
+6) The transcript is locally polished (regex heuristics, repeated char collapse, trivial noise
+   suppression). Optionally, a compact LLM rewriter pass improves sentence breaks and readability.
+7) The backend calls `sendFinalizeRaw` once with the polished source text. The WS layer translates
+   this text per-subscriber preferences and delivers a final line to each client in their own language.
+8) Frontend receives the final line and draws it with the speaker’s color. Interim lines are updated
+   or replaced; when the speaker goes silent, that line can be faded out or held based on UI policy.
+"""
+add_section("End-to-End Data Flow", wrap(flow))
+
+# --- Early-stage bot (pre-backend) ---
+pre_backend = """
+**Goal:** get a Discord bot into a voice channel and prove we can capture and decode voice.
+
+Key steps and learnings:
+- Permissions: The bot needs `ViewChannel`, `Connect`, and `Speak`. We added a `!permcheck`
+  command to verify channel-level permissions quickly.
+- Joining a VC: `@discordjs/voice` with `joinVoiceChannel({ channelId, guildId, adapterCreator })`.
+- Audio receiving: The receiver emits speaker IDs via `speaking.on('start')`. We subscribe to the
+  user with an end-behavior that closes the stream after a period of silence (VAD-lite).
+- Decoding: `prism-media` Opus decoder with `@discordjs/opus` improves reliability over pure JS.
+- Chunking: The first `AudioBufferer` was a simple min/max millisecond window that emitted a clip
+  when the buffer crossed the min threshold or a silence cutoff occurred.
+- Output: Printed raw text to the console. Latency depended on chunk length and STT model speed.
+  Early tuning favored 800–1500 ms chunks as a balance of context and latency.
+"""
+add_section("Early Prototype (No Real Backend Yet)", wrap(pre_backend))
+
+# --- WebSocket server and overlay concept ---
+ws_overlay = """
+We introduced a tiny WebSocket server to decouple core inference from UI. Reasons:
+
+- Multiple consumers: A single backend can feed multiple overlays (e.g., main display + dev console).
+- Per-user preferences: Allow each client to choose its own language (`targetLang`) and whether to
+  translate at all. This prevents a global setting that would force everyone into one language.
+- UI iteration velocity: The overlay can be rebuilt independently (WPF, WinForms, or even a bare
+  Win32 app) without touching the backend pipeline.
+
+Protocol (current minimal form):
+- Server → Client:
+  • `{"type":"prefs","prefs":{ translate, targetLang, langHint }}` — initial snapshot for this socket.
+  • `{"type":"caption",  ...}` — initial “line exists” message (often an ellipsis or tiny interim).
+  • `{"type":"update",   eventId, text }` — live edits to the interim text for the same line.
+  • `{"type":"finalize", eventId, userId, username, color, text, meta:{srcText,srcLang}}` — final line.
+
+- Client → Server:
+  • `{"type":"setPrefs","prefs":{ translate?:bool, targetLang?:string, langHint?:string }}`
+    — adjust only the fields given; server persists them for this socket instance.
+
+This protocol keeps the server stateless with respect to UI, except for per-socket preference storage.
+"""
+add_section("Why a WebSocket Server + Overlay Client?", wrap(ws_overlay))
+
+# --- GPT-4o-transcribe phase (and limitations) ---
+gpt4o = """
+We initially used `gpt-4o-transcribe` via OpenAI’s audio endpoint. Advantages: simple API, high
+quality on many inputs, and easy integration with our WAV wrapper helper. However:
+
+- Cost: Even short sessions added up quickly; approximately ~$3/hr ballpark (subject to change).
+- Latency: While reasonable, we wanted more consistent turn-around for sub-2s chunks.
+- Multilingual sensitivity: Auto-detect worked ok, but we encountered cases where enforced English
+  improved clarity—and others where it blocked non-English phrases. This variability made us
+  reconsider a single global hint.
+
+This led us toward Whisper-based pipelines, where we can tune chunk length, silence detection, and
+text cleanup to stabilize output and reduce cost.
+"""
+add_section("Phase I STT: GPT-4o-transcribe (Pros/Cons)", wrap(gpt4o))
+
+# --- Whisper phase details ---
+whisper = """
+With Whisper, accuracy for English improved, and costs became more predictable. The steps:
+
+1) WAV wrapping: Convert our raw PCM (48 kHz, mono, 16-bit) into a proper WAV header before upload.
+2) Language hints: Keep a default `langHint` (often 'en') for stability, but allow per-client UI
+   translation so the source text can remain in the most accurate form.
+3) Chunk tuning: Increase `SILENCE_MS` to around 900 ms and use `MIN_CHUNK_MS≈1200` / `MAX_CHUNK_MS≈2200`.
+   This reduced fragmentary outputs and improved punctuation/phrase completeness.
+4) Decoder stability: Switch to `@discordjs/opus` and set `.setMaxListeners(0)` on dynamic streams to
+   avoid noise from EventEmitter warnings.
+5) Text cleanup: Add local heuristics to collapse repeated characters, trim stray punctuation and
+   filter obvious non-speech artifacts. Optionally add a tiny LLM rewrite pass to improve readability
+   without “inventing” content.
+6) Per-client translation: Broadcast one polished source line; each overlay gets its own translation
+   (e.g., French for user A, Japanese for user B), using a compact text model to save cost.
+"""
+add_section("Phase II STT: Whisper (Why and How)", wrap(whisper))
+
+# --- Per-client translation strategy ---
+translation = """
+We intentionally moved translation out of the STT call and into the per-client WS layer. Rationale:
+
+- Personalization: Users in the same call may prefer different languages simultaneously.
+- Efficiency: Do STT once, translate N times with cheaper text models (or locally in the UI later).
+- Flexibility: Easily swap translation models without touching the STT pipeline.
+- Resilience: If translation is down or rate-limited, UI can still show the source text.
+
+Implementation details:
+- `ws.js` keeps a `WeakMap<socket, prefs>` for local settings (translate on/off, targetLang, langHint).
+- `sendFinalizeRaw(evt)` loops through `wss.clients` and, per socket, applies translation if enabled,
+  then sends `finalize` to *that* socket only.
+- `getDefaultPrefs()` returns a stable default hint for STT (commonly English). This can be
+  overridden via environment or future in-call detection heuristics.
+"""
+add_section("Per-Client Translation (Design & Implementation)", wrap(translation))
+
+# --- Text polishing pipeline ---
+cleanup = """
+We added a two-stage text polish to improve readability and reduce “junk” tokens:
+
+1) Local polish (free, fast):
+   - Collapse repeated characters beyond a threshold (e.g., "loooool" → "loool" or "lool").
+   - Trim stray punctuation (extra commas, dots), collapse whitespace, normalize quotes.
+   - Filter very short, low-confidence tokens (e.g., single characters not in a word, unless they
+     represent a language-specific particle).
+   - Optionally build a small “allowed tokens” map for known languages.
+
+2) LLM polish (optional, small model):
+   - Keep the instruction strict: “Do **not** add information; correct punctuation/capitalization,
+     remove disfluencies (uh/um), keep meaning intact.”
+   - Budget it: Only run on final lines (not interims), and only when the text length is above a
+     threshold that benefits from polishing.
+   - Cache: For repeated inputs (e.g., echo from multiple clients), reuse the polish result.
+"""
+add_section("Text Polishing: Local Heuristics + Optional LLM", wrap(cleanup))
+
+# --- Noise / garbage mitigation, VAD, and gating ---
+vad = """
+To combat random “rumble toot” style outputs and environmental noise:
+
+- Amplitude gate: Reject chunks whose RMS falls below a small threshold for most of their duration.
+- Minimum voiced duration: If voiced fraction < X% of the chunk, discard or mark as (no speech).
+- Character sanity: Drop lines comprised almost entirely of repeated characters or non-word tokens.
+- Silence tuning: Use ~900 ms `SILENCE_MS` end behavior; this balances cutting latency with avoiding
+  excessive fragmentation.
+- Decoding quality: Install `@discordjs/opus` to reduce decode artifacts; prefer stable audio drivers.
+
+About WebRTC VAD:
+- A JS/WASM-ready WebRTC VAD package is not consistently available on npm. If/when we integrate one,
+  we’ll wrap it behind a small `isLikelySpeech(pcm)` helper so switching implementations is trivial.
+- Alternative: run Python `webrtcvad` in a tiny local microservice and call it over localhost; this
+  keeps Node clean while using a production-grade VAD.
+"""
+add_section("Mitigating Garbage Transcripts (VAD, Gates, Heuristics)", wrap(vad))
+
+# --- Frontend vision & WPF overlay ---
+frontend = """
+We target a Windows-first overlay that feels like a Rainmeter skin: always-on-top, translucent,
+click-through, with per-speaker color coding and minimal CPU/GPU usage.
+
+Why WPF:
+- Native performance, small memory footprint compared to Electron.
+- Easy always-on-top and transparency; supports hardware-accelerated text rendering.
+
+Current UI behavior (from the shared project state):
+- Connects to the backend WS on localhost (default port 7071; configurable).
+- Maintains a row per active speaker; an `eventId` ties interim `update` messages to a line.
+- On `finalize`, the line text becomes “final” and can be faded out or held (policy is configurable).
+- Offers local settings (language, translate toggle) that send `setPrefs` to the backend.
+
+Compilation note:
+- If you saw a `Spacing` property error in XAML, remove the unsupported attribute (older .NET/WPF)
+  or switch to `LineStackingStrategy="BlockLineHeight"` with an explicit `LineHeight` to create
+  gentle spacing between lines.
+"""
+add_section("Frontend (WPF Overlay) — Design & Current State", wrap(frontend))
+
+# --- WebSocket protocol in detail ---
+ws_proto = """
+Message types:
+
+Server → Client
+- prefs:
+  {
+    "type": "prefs",
+    "prefs": {
+      "translate": true|false,
+      "targetLang": "en|fr|ja|...",
+      "langHint":   "en|..." // for STT hint; frontends typically leave this alone
+    }
+  }
+
+- caption:
+  {
+    "type": "caption",
+    "eventId": "c_...",
+    "userId": "123",
+    "username": "Zay",
+    "color": "#6A9EFF",
+    "text": "…",
+    "isFinal": false
+  }
+
+- update:
+  { "type": "update", "eventId": "c_...", "text": "interim words so far" }
+
+- finalize:
+  {
+    "type": "finalize",
+    "eventId": "c_...",
+    "userId": "123",
+    "username": "Zay",
+    "color": "#6A9EFF",
+    "text": "polished (and translated) caption for THIS client",
+    "meta": {
+      "srcText": "polished source text",
+      "srcLang": "en"
+    }
+  }
+
+Client → Server
+- setPrefs:
+  { "type": "setPrefs", "prefs": { "targetLang": "de", "translate": true } }
+
+All fields not present in `setPrefs.prefs` remain unchanged for that socket.
+"""
+add_section("WebSocket Protocol (Stable Contract)", wrap(ws_proto))
+
+# --- Configuration and env ---
+env = """
+Key environment variables in `.env`:
+
+- BOT_TOKEN             : Discord bot token (keep private).
+- OPENAI_API_KEY        : API key for STT and LLM polish / translation.
+- WS_PORT               : WebSocket server port (default 7071; override `--ws-port=XXXX`).
+- SILENCE_MS            : End-of-speech silence detection (e.g., 900).
+- MIN_CHUNK_MS          : Minimum chunk size for STT (e.g., 1200).
+- MAX_CHUNK_MS          : Maximum chunk size before forced send (e.g., 2200).
+- TRANSCRIBE_MODEL      : Whisper model identifier.
+- TRANSLATE             : true/false (whether frontend should receive translated text).
+- TARGET_LANG           : default target language for clients that don’t set their own.
+- LANG_HINT             : default STT language hint (e.g., 'en'); leave empty to allow more autodetect.
+
+Security:
+- Never commit `.env`. Ship an `.env.example` with placeholders.
+- `.gitignore` should include: `.env`, `node_modules`, build artifacts, audio dumps.
+"""
+add_section("Configuration (.env) and Security", wrap(env))
+
+# --- Testing and logging ---
+testlog = """
+Recommended dev workflow:
+
+1) Start backend:
+   > npm start
+   Confirm: “WS listening on ws://localhost:7071” and “Logged in as <botname>”.
+
+2) In Discord:
+   - Invite the bot to your server (with the correct scopes/permissions).
+   - Join a voice channel and type `!join` in any text channel.
+   - Say a few sentences, measure latency from end-of-utterance to on-screen caption.
+
+3) Tune chunking:
+   - Increase `SILENCE_MS` if you see too many chopped lines.
+   - Increase `MIN_CHUNK_MS`/`MAX_CHUNK_MS` to give STT more context for punctuation.
+
+4) Test WS prefs:
+   - Run `node ws_client.js` to see current prefs snapshot.
+   - Run `node ws_client.js set targetLang=fr` to change only your client’s language.
+
+5) Logs to watch:
+   - “STT error: 400 Audio file is too short” → increase `MIN_CHUNK_MS` or ensure sufficient voiced content.
+   - “MaxListenersExceededWarning” → confirmed resolved by `.setMaxListeners(0)` on stream instances.
+   - ECONNREFUSED from `ws_client.js` → backend WS isn’t running or wrong port.
+"""
+add_section("Testing, Logging, and Tuning", wrap(testlog))
+
+# --- Research on third-party models ---
+research = """
+We evaluated a range of commercial and open alternatives for transcription and translation. The
+criteria were: accuracy (especially in multi-speaker calls), latency, cost, and ease of integration.
+
+Highlights:
+- OpenAI Whisper (API): Strong English accuracy, predictable cost, straightforward Node integration.
+  Weaknesses: non-English accuracy can vary; depends on chunk quality and language hinting.
+- Self-Hosted Whisper: Zero per-minute API cost if running on local GPU (but requires good hardware,
+  driver/tooling complexity, and shipping a heavier installer).
+- Deepgram Nova / Aura: Fast and accurate for many languages, competitive pricing; good streaming APIs.
+- Google Cloud STT: Solid accuracy, stable ecosystem; billing and quota management are well defined.
+- AssemblyAI / RevAI: Developer-friendly APIs; competitive English accuracy.
+- Vosk / Coqui (open): On-device options; may require more engineering effort to reach the same quality.
+
+Decision rationale:
+- For MVP: OpenAI Whisper API + compact LLM for polish/translation (per-client). This offers rapid
+  iteration with minimal infra, while keeping unit costs reasonable.
+- For later: Pilot self-hosted Whisper on CUDA-capable GPUs to reduce long-session cost; keep the
+  same backend interface so the UI remains unchanged.
+"""
+add_section("Third-Party Model Research (Accuracy, Latency, Cost)", wrap(research))
+
+# --- Packaging & distribution ---
+packaging = """
+Shipping plan (Windows-first):
+
+Frontend (WPF):
+- Publish self-contained single-file build (`dotnet publish -c Release -r win-x64 /p:PublishSingleFile=true /p:SelfContained=true`).
+- Ensure “Click-through” and “Always-on-top” are enabled; provide tray icon to toggle capture or
+  open settings.
+
+Backend (Node):
+- Distribute as a minimal folder with `node.exe` or bundle via `pkg`/`nexe` into a single binary.
+- Provide a batch file/launcher that starts the backend and then the overlay.
+- Include a first-run wizard to paste API keys and pick a default language.
+- Optionally add Windows Service support for power users (runs headless in background).
+
+Auto-update (later):
+- Keep an update check in the overlay; prompt and replace local binaries safely.
+- Version the WebSocket protocol to avoid breaking older overlays.
+"""
+add_section("Packaging & Distribution (MVP to GA)", wrap(packaging))
+
+# --- Hosting and data retention ---
+hosting = """
+We currently run fully local (audio never leaves the user’s machine except for STT/LLM API calls).
+That’s a strong privacy story for early adopters.
+
+Future hosting tradeoffs:
+- Cloud relay: If we later host translation or real-time processing in the cloud, we must document
+  data handling, retention, and security. Consider region pinning and data minimization.
+- Storage: By default, do not persist raw audio. If users enable “save transcripts,” store only
+  text with timestamps and speaker labels, locally and encrypted.
+- Rate limits: Plan for backoff and queuing if the STT/LLM provider throttles requests. Provide an
+  on-screen indicator when the system is degraded.
+"""
+add_section("Hosting, Privacy, and Data Retention", wrap(hosting))
+
+# --- Roadmap ---
+roadmap = """
+Short-term MVP polish:
+- Finalize WPF UI polish: layout, type ramp, line fade/hold policy, settings panel.
+- Harden backend cleanup: expand local heuristics, add amplitude + voiced-duration gates.
+- Improve language handling: allow auto vs forced hint per line if diarization suggests code-switching.
+- Add caching for translation/polish to reduce cost on repeated lines.
+
+Mid-term:
+- Real-time streaming variant (OpenAI Realtime or Deepgram streaming), with safe reconnection and
+  per-speaker simultaneous “live lines” that don’t push each other off-screen.
+- Optional on-device Whisper (CU-accelerated) for power users.
+
+Long-term:
+- Speaker labeling improvements: maintain per-user profiles and stable colors; map Discord nicknames
+  more reliably.
+- Accessibility features: adjustable font sizes, contrast themes, screen edge docking.
+- Enterprise mode: multi-user licensing, telemetry opt-in, managed updates.
+"""
+add_section("Roadmap (MVP → v1.0 → Beyond)", wrap(roadmap))
+
+# --- Troubleshooting Appendix ---
+troubleshooting = """
+Observed issues and fixes:
+
+• “Cannot find module 'dotenv'”
+  - Run `npm i dotenv` and ensure `require('dotenv').config()` appears at the top of `index.js`.
+
+• “ECONNREFUSED 127.0.0.1:7071” in `ws_client.js`
+  - Start the backend first; or pass `--ws-port=XXXX` to match your overlay/client.
+
+• MaxListenersExceededWarning on AudioReceiveStream
+  - Call `.setMaxListeners(0)` on per-user streams (opus, decoder) to suppress EventEmitter warnings.
+
+• “Audio file might be corrupted or unsupported” / “Audio file is too short”
+  - Ensure you write a proper WAV header around PCM.
+  - Increase `MIN_CHUNK_MS` and confirm chunks exceed ~0.1 s with sufficient voiced content.
+
+• Random language outputs or hallucinatory syllables
+  - Set `LANG_HINT=en` (or the main language) to bias recognition.
+  - Add local text cleanup: repeated char collapse, discard very short non-words.
+  - Consider amplitude/voiced gating to avoid transcribing room noise.
+
+• Realtime CONNECTING state error
+  - If experimenting with streaming STT, ensure the socket is OPEN before sending PCM; add retry/backoff.
+
+• Permissions issues
+  - Use `!permcheck` in the text channel while in the target voice channel.
+"""
+add_section("Troubleshooting (Common Errors & Remedies)", wrap(troubleshooting))
+
+# --- File inventory ---
+inventory = """
+Core backend files (current design intent):
+- index.js            : Orchestrates Discord client; integrates buffer → STT → cleanup → WS broadcast.
+- voice.js            : Voice join/leave; receiver setup; Opus subscribe/decoder; silence end behavior.
+- audio_buffer.js     : Per-speaker chunking with min/max duration; callback emits final PCM clips.
+- ws.js               : WebSocket server; per-socket prefs; caption/update/finalize fan-out.
+- stt_openai.js       : WAV wrapping; call Whisper (or alternative) to get transcript text.
+- translate_openai.js : Per-client translation helper; small, low-cost text model.
+- clean_text.js       : Local cleanup for interim + final lines (regex/heuristics).
+- cleanup_llm.js      : Optional LLM rewriter for final lines (budgeted and cacheable).
+- ws_client.js        : Tiny CLI tester for WS protocol and `setPrefs`. Useful for debugging.
+
+Frontend (WPF overlay project):
+- Connects to WS server; renders per-speaker lines with color.
+- Minimal settings UI sends `setPrefs` with `targetLang` and `translate` toggle.
+- Fix XAML compatibility by removing unsupported `Spacing` property or replacing with `LineHeight`.
+"""
+add_section("Repository Inventory (What Each File is For)", wrap(inventory))
+
+# --- Collaboration notes ---
+collab = """
+Live Share & Parallel Work:
+- The backend and frontend can be built independently. Agree on WS message schema and keep it stable.
+- Use feature branches for risky changes (e.g., swapping STT engines). Keep production on a stable tag.
+- Add a `scripts/diagnostics` folder with quick commands to test: WS connectivity, Discord perms,
+  STT health, translation response times.
+
+Code quality:
+- Log concisely with stable prefixes (e.g., `[STT]`, `[WS]`, `[VAD]`) to make filtering easy.
+- Add lightweight unit tests for text cleanup functions—they evolve quickly and need guardrails.
+- Encapsulate provider-specific code behind small adapters so model swaps don’t ripple through the app.
+"""
+add_section("Collaboration & Code Hygiene", wrap(collab))
+
+# --- Final thoughts ---
+final_thoughts = """
+We set out to build the most responsive and readable live-caption overlay for Discord calls. The
+architecture now cleanly separates capture, STT, cleanup, translation, and UI—so any one piece can
+be upgraded without breaking the others. Whisper has given us a strong accuracy baseline and cost
+profile for the MVP, and the system is ready for future improvements like real-time streaming,
+better VAD, and on-device transcription.
+
+Most importantly, the per-client translation model means each participant can see captions in the
+language that works best for them, without imposing a global choice on the entire call. That’s the
+experience advantage that will make this tool feel “obvious” once people try it.
+"""
+add_section("Closing Notes", wrap(final_thoughts))
+
+# Join all sections into a big text
+doc = f"""{title}
+{subtitle}
+Date: {date}
+
+{"="*92}
+
+""" + "\n\n".join(sections)
+
+out_path = "/mnt/data/Discord_Voice_Translator_Handbook.txt"
+with open(out_path, "w", encoding="utf-8") as f:
+    f.write(doc)
+
+out_path
