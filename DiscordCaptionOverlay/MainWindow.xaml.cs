@@ -112,7 +112,7 @@ namespace DiscordCaptionOverlay
         // Font size used by the caption TextBlock (pre-scale). Must match XAML base.
         const double FONT_SIZE         = 18.0;
 
-        const double IDLE_TIMEOUT_SEC  = 3.0;   // clear lane after silence
+    const double IDLE_TIMEOUT_SEC  = 4.0;   // clear lane after silence (spec)
 
         // Baseline window size for scaling (should match initial Width/Height in XAML)
         const double BASE_WIDTH        = 820.0;
@@ -384,6 +384,111 @@ namespace DiscordCaptionOverlay
             lane.LastActiveUtc = DateTime.UtcNow;
         }
 
+        // Streaming-friendly updater: handles prefix growth, corrections, and overflow reset
+        void UpdateLaneStreaming(LaneVM lane, string incomingText, bool isFinal)
+        {
+            incomingText = (incomingText ?? "").Replace("\r", " ").Replace("\n", " ").Trim();
+            if (string.IsNullOrEmpty(incomingText)) return;
+
+            // No change
+            if (string.Equals(incomingText, lane.Text, StringComparison.Ordinal))
+            {
+                lane.LastActiveUtc = DateTime.UtcNow;
+                lane.TextOpacity = isFinal ? 0.95 : 1.0;
+                return;
+            }
+
+            // Typical ASR streaming: new text has old as prefix -> append only the delta
+            if (!string.IsNullOrEmpty(lane.Text) && incomingText.StartsWith(lane.Text, StringComparison.Ordinal))
+            {
+                var delta = incomingText.Substring(lane.Text.Length).TrimStart();
+                if (delta.Length == 0)
+                {
+                    lane.LastActiveUtc = DateTime.UtcNow;
+                    lane.TextOpacity = isFinal ? 0.95 : 1.0;
+                    return;
+                }
+                AppendToLane(lane, delta, isFinal);
+                return;
+            }
+
+            // Correction/regression: replace content (ensure we don't overflow the box)
+            if (!string.IsNullOrEmpty(lane.Text) && lane.Text.StartsWith(incomingText, StringComparison.Ordinal))
+            {
+                lane.Text = incomingText.Length <= lane.CharBudget
+                    ? incomingText
+                    : incomingText.Substring(incomingText.Length - lane.CharBudget);
+                lane.TextOpacity = isFinal ? 0.95 : 1.0;
+                lane.LastActiveUtc = DateTime.UtcNow;
+                return;
+            }
+
+            // Different stream or fresh start: treat as a fragment to append/reset if needed
+            AppendToLane(lane, incomingText, isFinal);
+        }
+
+        // Replace-on-update: always show the newest full string, trimming to the most recent
+        // portion when it exceeds the lane's character budget.
+        void ReplaceLaneText(LaneVM lane, string newText, bool isFinal)
+        {
+            newText = (newText ?? "").Replace("\r", " ").Replace("\n", " ").Trim();
+            if (string.IsNullOrEmpty(newText)) return;
+
+            if (lane.CharBudget > 0 && newText.Length > lane.CharBudget)
+            {
+                lane.Text = newText.Substring(newText.Length - lane.CharBudget);
+            }
+            else
+            {
+                lane.Text = newText;
+            }
+
+            lane.TextOpacity = isFinal ? 0.95 : 1.0;
+            lane.LastActiveUtc = DateTime.UtcNow;
+        }
+
+        // Helper: detect a temporary userId we create to reserve a lane for an event
+        static bool IsTempUserId(string? uid) => !string.IsNullOrEmpty(uid) && uid!.StartsWith("evt:");
+
+        // Ensure there is a lane reserved for this event, even if user info is unknown
+        LaneVM GetOrCreateEventLane(string eventId)
+        {
+            if (_byEvent.TryGetValue(eventId, out var lane) && lane != null) return lane;
+
+            lane = _lanes.FirstOrDefault(l => l.UserId == null) ?? _lanes.OrderBy(l => l.LastActiveUtc).First();
+            if (lane.UserId is string oldId && !IsTempUserId(oldId)) _byUser.Remove(oldId);
+
+            lane.UserId = $"evt:{eventId}";
+            lane.Username = lane.Username ?? "";
+            lane.Color = string.IsNullOrWhiteSpace(lane.Color) ? "#6A9EFF" : lane.Color;
+            lane.TextOpacity = 1.0;
+            lane.LastActiveUtc = DateTime.UtcNow;
+
+            _byEvent[eventId] = lane;
+            return lane;
+        }
+
+        // When user info is available, adopt an existing event lane or allocate one for the user
+        LaneVM AdoptEventLaneForUser(string eventId, string userId, string username, string color)
+        {
+            if (_byEvent.TryGetValue(eventId, out var lane))
+            {
+                if (lane.UserId == null || IsTempUserId(lane.UserId) || lane.UserId != userId)
+                {
+                    if (lane.UserId is string oldId && !IsTempUserId(oldId)) _byUser.Remove(oldId);
+                    lane.UserId = userId;
+                    lane.Username = string.IsNullOrWhiteSpace(username) ? userId : username;
+                    lane.Color = string.IsNullOrWhiteSpace(color) ? "#6A9EFF" : color;
+                    lane.LastActiveUtc = DateTime.UtcNow;
+                    _byUser[userId] = lane;
+                }
+                return lane;
+            }
+            lane = GetOrAssignLane(userId, username, color);
+            _byEvent[eventId] = lane;
+            return lane;
+        }
+
         // ---------------- measure: recompute per-lane character budget ----------------
         void RecomputeCharBudgets()
         {
@@ -619,7 +724,7 @@ namespace DiscordCaptionOverlay
                 Dispatcher.Invoke(() =>
                 {
                     // Create or update in-flight message
-                    var inFlight = new InFlightMessage
+                    _inFlight[eventId] = new InFlightMessage
                     {
                         EventId = eventId,
                         UserId = userId,
@@ -628,16 +733,12 @@ namespace DiscordCaptionOverlay
                         Text = text,
                         LastUpdate = DateTime.UtcNow
                     };
-                    _inFlight[eventId] = inFlight;
 
-                    // Create or update lane
-                    var lane = GetOrAssignLane(userId, username, color);
-                    _byEvent[eventId] = lane;
+                    // Adopt or assign lane for this event/user
+                    var lane = AdoptEventLaneForUser(eventId, userId, username, color);
 
-                    // Update lane text immediately
-                    lane.Text = text;
-                    lane.TextOpacity = 1.0;
-                    lane.LastActiveUtc = DateTime.UtcNow;
+                    // Replace displayed text with newest string (trim to budget tail if needed)
+                    ReplaceLaneText(lane, text, isFinal: false);
                 }, DispatcherPriority.Send);
             }
             catch (Exception ex)
@@ -663,20 +764,20 @@ namespace DiscordCaptionOverlay
 
                 Dispatcher.Invoke(() =>
                 {
-                    // Update in-flight message
+                    // Ensure in-flight record exists (caption may have been missed)
                     if (_inFlight.TryGetValue(eventId, out var inFlight))
                     {
                         inFlight.Text = text;
                         inFlight.LastUpdate = DateTime.UtcNow;
-
-                        // Update lane immediately
-                        if (_byEvent.TryGetValue(eventId, out var lane))
-                        {
-                            lane.Text = text;
-                            lane.TextOpacity = 1.0;
-                            lane.LastActiveUtc = DateTime.UtcNow;
-                        }
                     }
+                    else
+                    {
+                        _inFlight[eventId] = new InFlightMessage { EventId = eventId, Text = text, LastUpdate = DateTime.UtcNow };
+                    }
+
+                    // Ensure a lane exists for this event and update it
+                    var lane = _byEvent.TryGetValue(eventId, out var l) ? l : GetOrCreateEventLane(eventId);
+                    ReplaceLaneText(lane, text, isFinal: false);
                 }, DispatcherPriority.Send);
             }
             catch (Exception ex)
@@ -714,40 +815,30 @@ namespace DiscordCaptionOverlay
 
                 Dispatcher.Invoke(() =>
                 {
-                    // Move from in-flight to finalized
-                    if (_inFlight.TryGetValue(eventId, out var inFlight))
+                    // Record final (even if in-flight was missing)
+                    var finalized = new FinalizedMessage
                     {
-                        var finalized = new FinalizedMessage
-                        {
-                            EventId = eventId,
-                            UserId = userId,
-                            Username = username,
-                            Color = color,
-                            Text = text,
-                            SrcText = srcText,
-                            SrcLang = srcLang,
-                            FinalizedAt = DateTime.UtcNow
-                        };
-                        _finalized[eventId] = finalized;
-                        _inFlight.Remove(eventId);
+                        EventId = eventId,
+                        UserId = userId,
+                        Username = username,
+                        Color = color,
+                        Text = text,
+                        SrcText = srcText,
+                        SrcLang = srcLang,
+                        FinalizedAt = DateTime.UtcNow
+                    };
+                    _finalized[eventId] = finalized;
+                    _inFlight.Remove(eventId);
 
-                        // Update lane with final text
-                        if (_byEvent.TryGetValue(eventId, out var lane))
-                        {
-                            lane.Text = text;
-                            lane.TextOpacity = 0.95; // Slightly dimmed for final
-                            lane.LastActiveUtc = DateTime.UtcNow;
-                        }
+                    // Ensure lane is bound to this user and show final text
+                    var lane = AdoptEventLaneForUser(eventId, userId, username, color);
+                    ReplaceLaneText(lane, text, isFinal: true);
 
-                        // Clean up eventId mapping after a delay
-                        Task.Delay(5000).ContinueWith(_ =>
-                        {
-                            Dispatcher.Invoke(() =>
-                            {
-                                _byEvent.Remove(eventId);
-                            }, DispatcherPriority.Background);
-                        });
-                    }
+                    // Clean event mapping later (let text linger)
+                    Task.Delay(5000).ContinueWith(_ =>
+                    {
+                        Dispatcher.Invoke(() => { _byEvent.Remove(eventId); }, DispatcherPriority.Background);
+                    });
                 }, DispatcherPriority.Send);
             }
             catch (Exception ex)
