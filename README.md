@@ -1,0 +1,1 @@
+# ai-discord-live-translator
