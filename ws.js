@@ -2,6 +2,7 @@
 const WebSocket = require('ws');
 const { loadPrefs } = require('./prefs_store');           // defaults only
 const { translateText } = require('./translate_openai');  // used per-client
+// DG manager instance is set by index.js after construction; fetch lazily when needed
 
 function bool(v, dflt = false) {
   if (v == null) return dflt;
@@ -10,6 +11,7 @@ function bool(v, dflt = false) {
   if (['0','false','no','off'].includes(s)) return false;
   return dflt;
 }
+
 function cleanLang(s, fallback = 'en') { return s ? String(s).trim() : fallback; }
 
 const defaultPrefs = loadPrefs(); // { translate, targetLang, langHint }
@@ -24,7 +26,7 @@ function startWs(port = 7071) {
     socketPrefs.set(socket, mine);
     safeSend(socket, { type: 'prefs', prefs: mine });
 
-    socket.on('message', (data) => {
+    socket.on('message', async (data) => {
       let msg; try { msg = JSON.parse(String(data)); } catch { return; }
       if (!msg || typeof msg !== 'object') return;
 
@@ -35,6 +37,28 @@ function startWs(port = 7071) {
         if ('langHint'   in msg.prefs) p.langHint   = cleanLang(msg.prefs.langHint,   p.langHint);
         socketPrefs.set(socket, p);
         safeSend(socket, { type: 'prefs', prefs: p });
+      }
+
+      // Backend API: pin/switch input language per Discord speaker
+      if (msg.type === 'speakers:set-inlang') {
+        const userId = String(msg.userId || '').trim();
+        const lang = typeof msg.lang === 'string' ? msg.lang.trim() : '';
+        if (!userId || !lang) {
+          return safeSend(socket, { type: 'error', error: 'bad_args' });
+        }
+        // Accept 'auto' or BCP-47-ish like en, en-US, pt-BR, ja-JP
+        const valid = (lang === 'auto') || /^[a-z]{2}(-[A-Za-z]{2})?$/.test(lang);
+        if (!valid) {
+          return safeSend(socket, { type: 'error', error: 'bad_lang' });
+        }
+        try {
+          const mgr = require('./dg_session_manager')._instance;
+          if (!mgr || typeof mgr.switchLanguage !== 'function') throw new Error('dg_manager_missing');
+          await mgr.switchLanguage(userId, lang);
+          safeSend(socket, { type: 'speakers:inlang-ack', userId, lang });
+        } catch (e) {
+          safeSend(socket, { type: 'error', error: 'switch_language_failed' });
+        }
       }
     });
   });

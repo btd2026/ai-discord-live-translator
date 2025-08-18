@@ -21,6 +21,7 @@ function envBool(name, dflt) {
 class DgSessionManager {
   constructor() {
     this.sessions = new Map(); // userId -> Session
+    this.pins = new Map();     // userId -> pinnedInputLang ('auto' | 'en' | 'ja-JP' ...)
     this.sweepTimer = null;
     this.startSweepTimer();
     this.MIN_CONNECT_BYTES = 48000 * 2 * 0.08;   // 80ms @ 48k mono Int16 = 7680
@@ -55,7 +56,7 @@ class DgSessionManager {
 
     const deepgram = createClient(dgKey);
     const model = (process.env.DG_MODEL || 'nova-3').trim();
-    const language = (process.env.DG_LANGUAGE || 'auto').trim();
+    const defaultEnvLanguage = (process.env.DG_LANGUAGE || 'auto').trim();
     const baseOpts = {
       model,
       encoding: 'linear16',
@@ -78,6 +79,36 @@ class DgSessionManager {
     let keepAliveTimer = null;
     let interimCount = 0;
     let finalCount = 0;
+    let switching = false; // during make-before-break
+    let newConn = null;
+    let newConnOpen = false;
+
+    const computeLanguage = () => {
+      // Per-user pin overrides env if provided and not 'auto'. If neither pinned nor env specify a fixed language, leave undefined for auto-detect.
+      const pin = session.pinnedInputLang && session.pinnedInputLang !== 'auto' ? session.pinnedInputLang : null;
+      const envLang = defaultEnvLanguage && defaultEnvLanguage !== 'auto' ? defaultEnvLanguage : null;
+      return pin || envLang || undefined;
+    };
+
+    // Shared transcript handler so we can attach it to any active/new socket
+    const handleTranscript = (data) => {
+      try {
+        const alt = data?.channel?.alternatives?.[0];
+        const text = alt?.transcript || '';
+        const isFinal = Boolean(data?.is_final);
+        const speechFinal = Boolean(data?.speech_final);
+
+        if (isFinal || speechFinal) {
+          finalCount++;
+        } else {
+          interimCount++;
+        }
+
+        onTranscript?.({ speakerId: userId, text, isFinal, speechFinal, raw: data });
+      } catch (e) {
+        onError?.(e);
+      }
+    };
 
     const openIfReady = () => {
       if (isOpen || isConnecting) return;
@@ -87,15 +118,17 @@ class DgSessionManager {
 
       isConnecting = true;
       const opts = { ...baseOpts };
-      if (language !== 'auto') opts.language = language;
-      console.log(`[Sess] creating DG session for ${username} (${userId})`);
+      const lang = computeLanguage();
+      if (lang) opts.language = lang;
+      console.log(`[Sess] creating DG session for ${username} (${userId}) lang=${lang || 'auto'}`);
       conn = deepgram.listen.live(opts);
 
       conn.on(LiveTranscriptionEvents.Open, () => {
         isConnecting = false;
         isOpen = true;
+        session.isOpen = true;
         startKeepAlive();
-        console.log(`[DG] socket OPEN for ${username} lang=${language}`);
+        console.log(`[DG] socket OPEN for ${username} lang=${lang || 'auto'}`);
         // Flush buffered audio
         if (session.pendingLen > 0 && session.pendingBytes.length) {
           try { conn.send(Buffer.concat(session.pendingBytes, session.pendingLen)); } catch {}
@@ -111,24 +144,7 @@ class DgSessionManager {
         }
       });
 
-      conn.on(LiveTranscriptionEvents.Transcript, (data) => {
-        try {
-          const alt = data?.channel?.alternatives?.[0];
-          const text = alt?.transcript || '';
-          const isFinal = Boolean(data?.is_final);
-          const speechFinal = Boolean(data?.speech_final);
-          
-          if (isFinal || speechFinal) {
-            finalCount++;
-          } else {
-            interimCount++;
-          }
-
-          onTranscript?.({ speakerId: userId, text, isFinal, speechFinal, raw: data });
-        } catch (e) {
-          onError?.(e);
-        }
-      });
+  conn.on(LiveTranscriptionEvents.Transcript, handleTranscript);
 
       conn.on(LiveTranscriptionEvents.Error, (err) => {
         const msg = err?.message || String(err);
@@ -166,6 +182,7 @@ class DgSessionManager {
     session = {
       userId,
       username,
+      pinnedInputLang: this.pins.get(userId), // 'auto' | 'en' | 'ja-JP' etc.; undefined treated as default
       get conn() { return conn; },
       isOpen: false,
       lastActivityTs: Date.now(),
@@ -204,6 +221,79 @@ class DgSessionManager {
         isConnecting = false;
         session.isOpen = false;
         session.lastCloseAt = Date.now();
+      },
+      // Make-before-break language switch: open a new connection with updated language, then swap and close old.
+      async switchLanguage(lang) {
+        session.pinnedInputLang = (lang && typeof lang === 'string') ? lang : undefined;
+        const nextLang = computeLanguage();
+        console.log(`[DG] pin lang user=${userId} lang=${lang}`);
+
+        // If not currently open, just let it reopen lazily with new language.
+        if (!isOpen) {
+          return; // openIfReady will use new language once enough audio arrives
+        }
+
+        if (switching) return; // avoid overlapping switches
+        switching = true;
+
+        try {
+          const opts = { ...baseOpts };
+          if (nextLang) opts.language = nextLang;
+          const oldConn = conn;
+          const oldKeepAlive = keepAliveTimer;
+
+          newConn = deepgram.listen.live(opts);
+          let resolved = false;
+
+          await new Promise((resolve, reject) => {
+            let timeout = setTimeout(() => {
+              if (!resolved) reject(new Error('DG new socket open timeout'));
+            }, 5000);
+
+            newConn.on(LiveTranscriptionEvents.Open, () => {
+              newConnOpen = true;
+              // Swap active connection
+              try { if (oldKeepAlive) clearInterval(oldKeepAlive); } catch {}
+              conn = newConn;
+              isOpen = true;
+              session.isOpen = true;
+              startKeepAlive();
+              // Attach handlers to new conn
+              newConn.on(LiveTranscriptionEvents.Transcript, handleTranscript);
+              newConn.on(LiveTranscriptionEvents.Error, (err) => {
+                const msg = err?.message || String(err);
+                console.warn(`[DG] error (new) for ${username}: ${msg}`);
+                onError?.(new Error(`[DG Error] ${msg}`));
+              });
+              newConn.on(LiveTranscriptionEvents.Close, (event) => {
+                stopKeepAlive();
+                const code = event?.code != null ? ` code=${event.code}` : '';
+                const reason = event?.reason ? ` reason="${event.reason}"` : '';
+                console.log(`[DG] new socket CLOSE for ${username}${code}${reason}`);
+                session.isOpen = false;
+                isOpen = false;
+                isConnecting = false;
+                session.lastCloseAt = Date.now();
+              });
+
+              // Close old connection after swap
+              try { oldConn?.finish?.(); } catch {}
+              try { oldConn?.close?.(); } catch {}
+              resolved = true;
+              clearTimeout(timeout);
+              resolve();
+            });
+
+            newConn.on(LiveTranscriptionEvents.Error, (err) => {
+              clearTimeout(timeout);
+              reject(err);
+            });
+          });
+        } finally {
+          switching = false;
+          newConn = null;
+          newConnOpen = false;
+        }
       }
     };
 
@@ -274,6 +364,19 @@ class DgSessionManager {
     for (const [userId] of this.sessions.entries()) {
       this.forceClose(userId);
     }
+  }
+
+  // Public API: switch a user's language and reopen their session using make-before-break
+  async switchLanguage(userId, lang) {
+    // Persist the pin even if session isn't created yet
+    if (!lang || lang === 'auto') {
+      this.pins.set(userId, 'auto');
+    } else {
+      this.pins.set(userId, lang);
+    }
+    const session = this.sessions.get(userId);
+    if (!session) return; // will be applied on next ensureSession/open
+    await session.switchLanguage(lang);
   }
 }
 
