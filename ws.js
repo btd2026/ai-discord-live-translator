@@ -3,6 +3,66 @@ const WebSocket = require('ws');
 const { loadPrefs } = require('./prefs_store');           // defaults only
 const { translateText } = require('./translate_openai');  // used per-client
 // DG manager instance is set by index.js after construction; fetch lazily when needed
+const { sessions } = require('./sessions');
+
+// Speaker updates (snapshot + delta) with debounce
+const SPEAKERS_PUSH_DEBOUNCE_MS = Number(process.env.SPEAKERS_PUSH_DEBOUNCE_MS || 200);
+const clients = new Set();
+const pendingPatches = new Map(); // userId -> mergedPatch
+let patchTimer = null;
+
+function enqueueSpeakerDelta(userId, patch) {
+  const curr = pendingPatches.get(userId) || {};
+  Object.assign(curr, patch);
+  pendingPatches.set(userId, curr);
+  if (!patchTimer) patchTimer = setTimeout(flushSpeakerDeltas, SPEAKERS_PUSH_DEBOUNCE_MS);
+}
+function flushSpeakerDeltas() {
+  patchTimer = null;
+  if (pendingPatches.size === 0) return;
+  for (const [userId, patch] of pendingPatches.entries()) {
+    const msg = JSON.stringify({ type: 'speakers:update', userId, patch });
+    for (const ws of clients) {
+      if (ws.readyState === WebSocket.OPEN) {
+        try { ws.send(msg); } catch {}
+      }
+    }
+  }
+  pendingPatches.clear();
+}
+function broadcastSpeakersSnapshot() {
+  const snapshot = sessions.getAllSpeakers ? sessions.getAllSpeakers() : [];
+  const msg = JSON.stringify({ type: 'speakers:snapshot', speakers: snapshot });
+  for (const ws of clients) {
+    if (ws.readyState === WebSocket.OPEN) {
+      try { ws.send(msg); } catch {}
+    }
+  }
+}
+
+// Exportable hub for other modules
+const speakerHub = {
+  onSpeakingStart(userId, username) {
+    if (username) sessions.setUsername(userId, username);
+    sessions.setSpeaking(userId, true);
+    enqueueSpeakerDelta(userId, { username, isSpeaking: true, lastHeardAt: Date.now() });
+  },
+  onSpeakingStop(userId) {
+    sessions.setSpeaking(userId, false);
+    enqueueSpeakerDelta(userId, { isSpeaking: false, lastHeardAt: Date.now() });
+  },
+  onDetectedLang(userId, lang) {
+    sessions.setDetectedLang(userId, lang);
+    enqueueSpeakerDelta(userId, { detectedLang: lang });
+  },
+  onPinnedLang(userId, lang) {
+    sessions.setLang(userId, lang);
+    enqueueSpeakerDelta(userId, { pinnedInputLang: lang });
+  },
+  pushSnapshot() { broadcastSpeakersSnapshot(); }
+};
+
+module.exports.speakerHub = speakerHub;
 
 function bool(v, dflt = false) {
   if (v == null) return dflt;
@@ -20,11 +80,17 @@ const socketPrefs = new WeakMap();
 function startWs(port = 7071) {
   const wss = new WebSocket.Server({ port });
   console.log(`📡 WS listening on ws://localhost:${port}`);
+  let hooks = null; // optional callbacks registered by index.js
 
   wss.on('connection', (socket) => {
+    clients.add(socket);
+    socket.on('close', () => { clients.delete(socket); });
+
     const mine = { ...defaultPrefs };
     socketPrefs.set(socket, mine);
     safeSend(socket, { type: 'prefs', prefs: mine });
+    // Optionally push a speakers snapshot on connect
+    try { safeSend(socket, { type: 'speakers:snapshot', speakers: sessions.getAllSpeakers() }); } catch {}
 
     socket.on('message', async (data) => {
       let msg; try { msg = JSON.parse(String(data)); } catch { return; }
@@ -37,6 +103,10 @@ function startWs(port = 7071) {
         if ('langHint'   in msg.prefs) p.langHint   = cleanLang(msg.prefs.langHint,   p.langHint);
         socketPrefs.set(socket, p);
         safeSend(socket, { type: 'prefs', prefs: p });
+      }
+
+      if (msg.type === 'speakers:get') {
+        try { safeSend(socket, { type: 'speakers:snapshot', speakers: sessions.getAllSpeakers() }); } catch {}
       }
 
       // Backend API: pin/switch input language per Discord speaker
@@ -56,6 +126,10 @@ function startWs(port = 7071) {
           if (!mgr || typeof mgr.switchLanguage !== 'function') throw new Error('dg_manager_missing');
           await mgr.switchLanguage(userId, lang);
           safeSend(socket, { type: 'speakers:inlang-ack', userId, lang });
+          // Emit delta to all clients
+          try { speakerHub.onPinnedLang(userId, lang); } catch {}
+          // Notify app layer (to force-finalize/reset caption event)
+          try { hooks?.onLanguagePinned?.(userId, lang); } catch {}
         } catch (e) {
           safeSend(socket, { type: 'error', error: 'switch_language_failed' });
         }
@@ -88,7 +162,8 @@ function startWs(port = 7071) {
       }));
     },
 
-    getDefaultPrefs() { return { ...defaultPrefs }; },
+  getDefaultPrefs() { return { ...defaultPrefs }; },
+  setHooks(h) { hooks = h || null; },
   };
 
   return api;

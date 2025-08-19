@@ -1,6 +1,8 @@
 const { joinVoiceChannel, EndBehaviorType, getVoiceConnection } = require('@discordjs/voice');
 const prism = require('prism-media');
 const { DgSessionManager } = require('./dg_session_manager');
+const { speakerHub } = require('./ws');
+const { sessions } = require('./sessions');
 
 const SILENCE_MS = Number(process.env.SILENCE_MS || 1200);
 const FRAME_BYTES_20MS = Math.floor(48000 * 2 * 0.02); // 1920
@@ -40,6 +42,7 @@ async function joinAndListen(message, onPcm) {
       const gm = await guild.members.fetch(userId).catch(() => null);
       const username = gm?.displayName || gm?.user?.username || userId;
       console.log(`[Voice] ${username} started speaking`);
+      try { speakerHub.onSpeakingStart(userId, username); } catch {}
 
       const opus = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: SILENCE_MS }
@@ -54,6 +57,7 @@ async function joinAndListen(message, onPcm) {
         try { opus.unpipe(decoder); } catch {}
         active.delete(userId);
         console.log(`[Voice] ${username} stopped (silence)`);
+        try { speakerHub.onSpeakingStop(userId); } catch {}
         // Drop any carry remainder for this user
         const m = joinAndListen._carryMap;
         if (m) m.delete(userId);
@@ -76,6 +80,7 @@ async function joinAndListen(message, onPcm) {
 
         // Mark activity even on short bursts to keep session alive
         try { require('./dg_session_manager')._instance?.markActivity?.(userId); } catch {}
+        try { sessions.touch(userId); } catch {}
 
         const prev = carryMap.get(userId);
         let buf = prev ? Buffer.concat([prev, pcm], prev.length + pcm.length) : pcm;

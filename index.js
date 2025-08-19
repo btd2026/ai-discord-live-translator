@@ -117,6 +117,35 @@ function getOrCreateSpeaker(userId, username) {
   return s;
 }
 
+// When a language pin arrives for a user, force-finalize their current caption event
+ws.setHooks({
+  onLanguagePinned: async (userId, lang) => {
+    const s = speakers.get(userId);
+    if (!s) return;
+    // If already finalized or not opened, just reset the container so next interim gets a new eventId
+    if (!s.opened || s.finalized) {
+      speakers.delete(userId);
+      return;
+    }
+    // Compose a best-effort final from committed + tail of prevHyp
+    const committed = s.committed || '';
+    const tail = (s.prevHyp || '').slice(committed.length).trim();
+    const finalText = localPolishFinal((committed + (tail ? (' ' + tail) : '')).trim());
+    try {
+      await ws.sendFinalizeRaw({
+        eventId: s.eventId,
+        userId,
+        username: s.username,
+        color: pickColor(userId),
+        srcText: finalText,
+        srcLang: process.env.DG_LANGUAGE || 'auto'
+      });
+    } catch {}
+    // Drop current state so next interim starts a fresh eventId
+    speakers.delete(userId);
+  }
+});
+
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   console.log(`📡 WS on ws://localhost:${WS_PORT}`);
