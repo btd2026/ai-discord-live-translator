@@ -3,6 +3,12 @@ const OpenAI = require('openai');
 
 let openai = null;
 
+function hasUsableKey() {
+  const k = process.env.OPENAI_API_KEY;
+  // Basic sanity: most OpenAI keys start with 'sk-'
+  return typeof k === 'string' && k.trim().length > 0 && /sk-/.test(k);
+}
+
 function getOpenAI() {
   if (!openai) {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -14,8 +20,22 @@ function getOpenAI() {
   return openai;
 }
 
+// In translate_openai.js, modify translateText function:
 async function translateText(text, targetLang = 'en') {
-  if (!text || !text.trim()) return '';
+  // console.log('🔍 Translation attempt:', { 
+  //   text: text?.slice(0, 30) + '...', 
+  //   targetLang, 
+  //   textLen: text?.length,
+  //   hasKey: !!process.env.OPENAI_API_KEY 
+  // });
+  
+  if (!text || !targetLang) {
+    console.log('⚠️ Skipping - missing text or targetLang');
+    return '';
+  }
+  
+  const maxLen = Number(process.env.INTERIM_TRANSLATION_MAX_LENGTH || 300);
+  const truncated = text.length > maxLen ? text.slice(0, maxLen) : text;
   
   try {
     const client = getOpenAI();
@@ -23,17 +43,20 @@ async function translateText(text, targetLang = 'en') {
 
     const resp = await client.chat.completions.create({
       model,
-      temperature: 0,
+      max_tokens: 150,
+      temperature: 0.3,
       messages: [
         { role: 'system', content: `You are a precise translator. Translate the user's text into ${targetLang}. Keep names/terms. Return only the translation.` },
-        { role: 'user', content: text }
-      ],
+        { role: 'user', content: truncated }
+      ]
     });
 
-    return resp?.choices?.[0]?.message?.content?.trim() || '';
-  } catch (error) {
-    console.warn('[Translation] Error:', error.message);
-    return text; // Return original text on error
+    const result = resp.choices?.[0]?.message?.content?.trim() || '';
+    console.log('✅ Translation success:', result?.slice(0, 30) + '...');
+    return result;
+  } catch (err) {
+    console.log('❌ Translation failed:', err.message);
+    return '';
   }
 }
 

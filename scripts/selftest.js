@@ -39,7 +39,7 @@ client.on('open', () => {
   
   setTimeout(() => {
     console.log('🔄 2. Sending update...');
-    ws.sendUpdate(TEST_EVENT_ID, 'Hello, this is a test update!');
+    ws.sendUpdate(TEST_EVENT_ID, 'Hello, this is a test update!', { userId: TEST_USER_ID, username: TEST_USERNAME });
   }, 200);
   
   setTimeout(() => {

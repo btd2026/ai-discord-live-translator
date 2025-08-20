@@ -107,7 +107,7 @@ function getOrCreateSpeaker(userId, username) {
       if (stable.length > s.committed.length) s.committed = stable;
       const tail = hyp.slice(s.committed.length).trim();
       const visible = (s.committed + (tail ? (' ' + tail) : '')).trim();
-      ws.sendUpdate(s.eventId, localPolishInterim(visible));
+      ws.sendUpdate(s.eventId, localPolishInterim(visible), { userId, username: s.username });
       s.prevHyp = hyp;
     },
     (e) => console.warn('[Deepgram]', e?.message || e)

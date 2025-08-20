@@ -76,6 +76,7 @@ class DgSessionManager {
     let conn = null;
     let isOpen = false;
     let isConnecting = false;
+    let isFinishing = false;  // Add flag to prevent repeated finish attempts
     let keepAliveTimer = null;
     let interimCount = 0;
     let finalCount = 0;
@@ -126,7 +127,9 @@ class DgSessionManager {
       conn.on(LiveTranscriptionEvents.Open, () => {
         isConnecting = false;
         isOpen = true;
+        isFinishing = false;  // Reset finish flag when socket opens
         session.isOpen = true;
+        session.isFinishing = false;  // Also reset on session object
         startKeepAlive();
         console.log(`[DG] socket OPEN for ${username} lang=${lang || 'auto'}`);
         // Flush buffered audio
@@ -158,8 +161,10 @@ class DgSessionManager {
         const reason = event?.reason ? ` reason="${event.reason}"` : '';
         console.log(`[DG] socket CLOSE for ${username}${code}${reason} (${interimCount} interims, ${finalCount} finals, pending=${session.pendingLen} bytes)`);
         session.isOpen = false;
+        session.isFinishing = false;  // Reset finish flag on session object
         isOpen = false;
         isConnecting = false;
+        isFinishing = false;  // Reset finish flag when socket closes
         session.lastCloseAt = Date.now();
         // Keep the session for reuse (even on 1011). Only delete on explicit destroy().
       });
@@ -185,6 +190,7 @@ class DgSessionManager {
       pinnedInputLang: this.pins.get(userId), // 'auto' | 'en' | 'ja-JP' etc.; undefined treated as default
       get conn() { return conn; },
       isOpen: false,
+      isFinishing: false,  // Add flag to prevent repeated finish attempts
       lastActivityTs: Date.now(),
       lastCloseAt: 0,
       pendingBytes: [],
@@ -204,7 +210,9 @@ class DgSessionManager {
         }
       },
       finish: () => {
-        if (isOpen && conn) {
+        if (isOpen && conn && !isFinishing) {
+          isFinishing = true;  // Prevent repeated finish attempts
+          session.isFinishing = true;  // Also set on session object
           try { 
             conn.finish(); 
             console.log(`[DG] finished session for ${username}`);
@@ -326,7 +334,7 @@ class DgSessionManager {
     for (const [userId, session] of this.sessions.entries()) {
       const idleMs = now - session.lastActivityTs;
       if (idleMs > idleThreshold) {
-        if (session.isOpen && session.conn) {
+        if (session.isOpen && session.conn && !session.isFinishing) {
           console.log(`[Sess] finishing idle DG socket for ${session.username} (${Math.round(idleMs)}ms idle)`);
           session.finish(); // socket closes, session persists for reuse
         }
