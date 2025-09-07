@@ -2,8 +2,12 @@
 const WebSocket = require('ws');
 const { loadPrefs } = require('./prefs_store');           // defaults only
 const { translateText } = require('./translate_openai');  // used per-client
+const { logMessage } = require('./log');                  // enhanced logging
+const config = require('./timing_config');                // timing configuration
+const { SegmentManager } = require('./segment_manager');  // segment management
 // DG manager instance is set by index.js after construction; fetch lazily when needed
 const { sessions } = require('./sessions');
+const { log } = require('./log');
 
 // Read interim translation config from .env directly
 function bool(name, dflt = false) {
@@ -32,6 +36,88 @@ const pendingPatches = new Map(); // userId -> mergedPatch
 let patchTimer = null;
 // Debounced interim translation cache: userId -> { lastText, timer, lastOut, targetLang }
 const interimCache = Object.create(null);
+
+// Enhanced throttling system
+const segmentManager = new SegmentManager();
+const updateThrottler = new Map(); // segmentId -> { lastSent, queue }
+
+class UpdateThrottler {
+  constructor() {
+    this.segmentData = new Map(); // segmentId -> { lastSent, updateCount, queue }
+    this.intervalTracker = new Map(); // segmentId -> { startTime, count }
+  }
+  
+  shouldSend(segmentId, message) {
+    const now = Date.now();
+    const data = this.segmentData.get(segmentId) || { 
+      lastSent: 0, 
+      updateCount: 0, 
+      queue: null 
+    };
+    
+    // Track updates per second
+    const interval = this.intervalTracker.get(segmentId) || { startTime: now, count: 0 };
+    if (now - interval.startTime >= 1000) {
+      // Reset counter every second
+      interval.startTime = now;
+      interval.count = 0;
+    }
+    interval.count++;
+    this.intervalTracker.set(segmentId, interval);
+    
+    // Check rate limit
+    if (interval.count > config.MAX_INTERIMS_PER_SEC) {
+      logMessage('THROTTLE', { segmentId, reason: 'rate_limit', updatesPerSec: interval.count });
+      return false;
+    }
+    
+    // Check minimum interval
+    const timeSince = now - data.lastSent;
+    if (timeSince < config.UPDATE_THROTTLE) {
+      // Queue the update
+      data.queue = message;
+      this.segmentData.set(segmentId, data);
+      return false;
+    }
+    
+    data.lastSent = now;
+    data.updateCount++;
+    this.segmentData.set(segmentId, data);
+    return true;
+  }
+  
+  flushQueued() {
+    const now = Date.now();
+    const toSend = [];
+    
+    for (const [segmentId, data] of this.segmentData.entries()) {
+      if (data.queue && (now - data.lastSent) >= config.UPDATE_THROTTLE) {
+        toSend.push(data.queue);
+        data.lastSent = now;
+        data.queue = null;
+      }
+    }
+    
+    return toSend;
+  }
+}
+
+const throttler = new UpdateThrottler();
+
+// Flush queued updates every 50ms
+setInterval(() => {
+  const queued = throttler.flushQueued();
+  queued.forEach(msg => broadcastDirect(msg));
+}, 50);
+
+// Check for silence timeouts every 100ms
+setInterval(() => {
+  const timeouts = segmentManager.checkSilenceTimeouts();
+  timeouts.forEach(msg => {
+    logMessage('TX', msg);
+    broadcastDirect(msg);
+  });
+}, 100);
 
 function enqueueSpeakerDelta(userId, patch) {
   const curr = pendingPatches.get(userId) || {};
@@ -64,10 +150,13 @@ function broadcastSpeakersSnapshot() {
 
 // Exportable hub for other modules
 const speakerHub = {
-  onSpeakingStart(userId, username) {
+  onSpeakingStart(userId, username, avatar) {
     if (username) sessions.setUsername(userId, username);
+    if (avatar) sessions.setAvatar(userId, avatar);
     sessions.setSpeaking(userId, true);
-    enqueueSpeakerDelta(userId, { username, isSpeaking: true, lastHeardAt: Date.now() });
+    const patch = { username, isSpeaking: true, lastHeardAt: Date.now() };
+    if (avatar) patch.avatar = avatar;
+    enqueueSpeakerDelta(userId, patch);
   },
   onSpeakingStop(userId) {
     sessions.setSpeaking(userId, false);
@@ -152,7 +241,21 @@ function startWs(port = 7071) {
   });
 
   const api = {
-    sendCaption(payload) { broadcast(wss, { type: 'caption', ...payload }); },
+    sendCaption(payload) {
+      try {
+        // Inject avatar from session if not provided on first caption
+        const userId = payload && payload.userId ? String(payload.userId) : '';
+        const s = (sessions.get && userId) ? sessions.get(userId) : null;
+        const p = { ...payload };
+        const hadBefore = !!p.avatar;
+        if (p.avatar == null && s && s.avatar) p.avatar = s.avatar;
+        const injected = !hadBefore && !!p.avatar;
+        try { console.log('[CaptionInject]', { userId, injected }); } catch {}
+        broadcast(wss, { type: 'caption', ...p });
+      } catch {
+        broadcast(wss, { type: 'caption', ...payload });
+      }
+    },
     // NEW: interim updates tied to an existing eventId
     sendUpdate(eventId, text, meta = {}) {
       // broadcast original update first
@@ -267,6 +370,20 @@ function startWs(port = 7071) {
 }
 
 function broadcast(wss, obj) {
+  // Enhanced broadcast with throttling and logging
+  logMessage('TX', obj);
+  
+  if (obj.segmentId && obj.kind === 'interim') {
+    // Apply throttling for interim updates
+    if (!throttler.shouldSend(obj.segmentId, obj)) {
+      return; // Throttled or queued
+    }
+  }
+  
+  broadcastDirect(wss, obj);
+}
+
+function broadcastDirect(wss, obj) {
   const data = JSON.stringify(obj);
   for (const c of wss.clients) {
     if (c.readyState === WebSocket.OPEN) { try { c.send(data); } catch {} }

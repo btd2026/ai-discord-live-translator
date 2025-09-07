@@ -42,9 +42,14 @@ class DgSessionManager {
   ensureSession(userId, username, onTranscript, onError) {
     let session = this.sessions.get(userId);
     
+    // If a session already exists, refresh mutable fields and the callbacks
+    // so future transcripts use the latest per-user state (new eventId, etc.).
     if (session) {
       session.lastActivityTs = Date.now();
       session.username = username;
+      // Update handlers so the existing socket forwards to the new closure
+      session.onTranscript = onTranscript;
+      session.onError = onError;
       return session; // keep and reuse the same session object
     }
 
@@ -91,7 +96,9 @@ class DgSessionManager {
       return pin || envLang || undefined;
     };
 
-    // Shared transcript handler so we can attach it to any active/new socket
+    // Shared transcript handler so we can attach it to any active/new socket.
+    // It always delegates to session.onTranscript/onError so callers can
+    // refresh callbacks when reusing an existing session.
     const handleTranscript = (data) => {
       try {
         const alt = data?.channel?.alternatives?.[0];
@@ -105,9 +112,9 @@ class DgSessionManager {
           interimCount++;
         }
 
-        onTranscript?.({ speakerId: userId, text, isFinal, speechFinal, raw: data });
+        try { session?.onTranscript?.({ speakerId: userId, text, isFinal, speechFinal, raw: data }); } catch (e2) { session?.onError?.(e2); }
       } catch (e) {
-        onError?.(e);
+        try { session?.onError?.(e); } catch {}
       }
     };
 
@@ -152,7 +159,7 @@ class DgSessionManager {
       conn.on(LiveTranscriptionEvents.Error, (err) => {
         const msg = err?.message || String(err);
         console.warn(`[DG] error for ${username}: ${msg}`);
-        onError?.(new Error(`[DG Error] ${msg}`));
+        session?.onError?.(new Error(`[DG Error] ${msg}`));
       });
 
       conn.on(LiveTranscriptionEvents.Close, (event) => {
@@ -191,6 +198,9 @@ class DgSessionManager {
       get conn() { return conn; },
       isOpen: false,
       isFinishing: false,  // Add flag to prevent repeated finish attempts
+      // Latest callbacks (can be updated when ensureSession is called again)
+      onTranscript,
+      onError,
       lastActivityTs: Date.now(),
       lastCloseAt: 0,
       pendingBytes: [],
@@ -206,7 +216,7 @@ class DgSessionManager {
           session.pendingLen += pcmBuffer.length;
           openIfReady();
         } else {
-          try { conn.send(pcmBuffer); } catch (e) { onError?.(e); }
+          try { conn.send(pcmBuffer); } catch (e) { session.onError?.(e); }
         }
       },
       finish: () => {
@@ -217,7 +227,7 @@ class DgSessionManager {
             conn.finish(); 
             console.log(`[DG] finished session for ${username}`);
           } catch (e) { 
-            onError?.(e); 
+            session.onError?.(e); 
           }
         }
       },
@@ -271,7 +281,7 @@ class DgSessionManager {
               newConn.on(LiveTranscriptionEvents.Error, (err) => {
                 const msg = err?.message || String(err);
                 console.warn(`[DG] error (new) for ${username}: ${msg}`);
-                onError?.(new Error(`[DG Error] ${msg}`));
+                session?.onError?.(new Error(`[DG Error] ${msg}`));
               });
               newConn.on(LiveTranscriptionEvents.Close, (event) => {
                 stopKeepAlive();

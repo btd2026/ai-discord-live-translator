@@ -1,0 +1,19 @@
+<Application x:Class="DiscordCaptionOverlay.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:DiscordCaptionOverlay"
+             StartupUri="MainWindow.xaml">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <!-- Default theme -->
+        <ResourceDictionary Source="pack://application:,,,/DiscordCaptionOverlay;component/Themes/Glass.xaml"/>
+      </ResourceDictionary.MergedDictionaries>
+
+      <!-- Global resources available to ALL XAML at parse time -->
+      <FontFamily x:Key="AppFont">Segoe UI</FontFamily>
+      <local:ConnectionToBrushConverter x:Key="ConnectionToBrushConverter"/>
+      <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

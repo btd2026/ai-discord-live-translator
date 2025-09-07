@@ -1,0 +1,9 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- High-contrast theme -->
+  <SolidColorBrush x:Key="HeaderBackground" Color="#66000000"/>
+  <SolidColorBrush x:Key="RowFill" Color="#33000000"/>
+  <SolidColorBrush x:Key="RowBorder" Color="#77FFFFFF"/>
+  <SolidColorBrush x:Key="PrimaryText" Color="#FFFFFFFF"/>
+  <SolidColorBrush x:Key="SecondaryText" Color="#CCFFFFFF"/>
+</ResourceDictionary>

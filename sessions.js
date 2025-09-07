@@ -2,7 +2,7 @@
 
 class Sessions {
   constructor() {
-    this.map = new Map(); // userId -> { username, pinnedInputLang, detectedLang, isSpeaking, lastHeardAt }
+    this.map = new Map(); // userId -> { username, avatar, pinnedInputLang, detectedLang, isSpeaking, lastHeardAt }
   }
 
   ensure(userId) {
@@ -21,6 +21,12 @@ class Sessions {
   setUsername(userId, username) {
     const s = this.ensure(userId);
     if (username) s.username = username;
+    return s;
+  }
+
+  setAvatar(userId, avatarUrl) {
+    const s = this.ensure(userId);
+    if (avatarUrl) s.avatar = String(avatarUrl);
     return s;
   }
 
@@ -47,6 +53,7 @@ class Sessions {
     return Array.from(this.map.values()).map(s => ({
       userId: s.userId,
       username: s.username,
+      avatar: s.avatar,
       pinnedInputLang: s.pinnedInputLang,
       detectedLang: s.detectedLang,
       isSpeaking: Boolean(s.isSpeaking),

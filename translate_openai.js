@@ -20,34 +20,37 @@ function getOpenAI() {
   return openai;
 }
 
-// In translate_openai.js, modify translateText function:
+// Translation with same-language preservation.
+// If input language == target language (ignoring region codes),
+// return minimally cleaned text without paraphrasing.
+// Otherwise, translate faithfully. Always avoid summarization.
 async function translateText(text, targetLang = 'en') {
-  // console.log('🔍 Translation attempt:', { 
-  //   text: text?.slice(0, 30) + '...', 
-  //   targetLang, 
-  //   textLen: text?.length,
-  //   hasKey: !!process.env.OPENAI_API_KEY 
-  // });
-  
-  if (!text || !targetLang) {
-    console.log('⚠️ Skipping - missing text or targetLang');
-    return '';
-  }
-  
+  if (!text || !targetLang) return '';
+
   const maxLen = Number(process.env.INTERIM_TRANSLATION_MAX_LENGTH || 300);
   const truncated = text.length > maxLen ? text.slice(0, maxLen) : text;
-  
+
   try {
     const client = getOpenAI();
     const model = process.env.TRANSLATE_MODEL || 'gpt-4o-mini';
 
+    const system = [
+      'You are an expert translator and copy editor.',
+      'Rules:',
+      `- If the input language is the SAME as the target (${targetLang}), do NOT translate or paraphrase.`,
+      '- Instead, minimally clean punctuation/casing and obvious ASR artifacts only.',
+      '- Keep wording and word order identical as much as possible. Do not summarize or add/remove information.',
+      '- If the input language differs from the target, translate faithfully into the target language.',
+      '- Preserve names, terms, numbers exactly. Output ONLY the final text (no quotes or labels).'
+    ].join('\n');
+
     const resp = await client.chat.completions.create({
       model,
-      max_tokens: 150,
-      temperature: 0.3,
+      max_tokens: 180,
+      temperature: 0,
       messages: [
-        { role: 'system', content: `You are a precise translator. Translate the user's text into ${targetLang}. Keep names/terms. Return only the translation.` },
-        { role: 'user', content: truncated }
+        { role: 'system', content: system },
+        { role: 'user', content: `Target language: ${targetLang}\n\nText:\n${truncated}` }
       ]
     });
 
@@ -55,9 +58,10 @@ async function translateText(text, targetLang = 'en') {
     console.log('✅ Translation success:', result?.slice(0, 30) + '...');
     return result;
   } catch (err) {
-    console.log('❌ Translation failed:', err.message);
+    console.log('⚠️ Translation failed:', err?.message || String(err));
     return '';
   }
 }
 
 module.exports = { translateText };
+

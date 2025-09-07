@@ -39,10 +39,22 @@ async function joinAndListen(message, onPcm) {
       if (active.has(userId)) return; // debounce multiple starts
       active.add(userId);
       
+      // Try to resolve member + avatar robustly
       const gm = await guild.members.fetch(userId).catch(() => null);
       const username = gm?.displayName || gm?.user?.username || userId;
+      let avatar = null;
+      try {
+        // 1) Prefer guild member's user avatar
+        avatar = gm?.user?.displayAvatarURL?.({ extension: 'png', size: 64, forceStatic: true }) || null;
+        // 2) Fallback: fetch the User via the global users API (does not require Guild Members intent)
+        if (!avatar) {
+          const user = await guild.client.users.fetch(userId).catch(() => null);
+          avatar = user?.displayAvatarURL?.({ extension: 'png', size: 64, forceStatic: true }) || null;
+        }
+      } catch {}
+      console.log('[Voice] avatar URL:', avatar);
       console.log(`[Voice] ${username} started speaking`);
-      try { speakerHub.onSpeakingStart(userId, username); } catch {}
+      try { speakerHub.onSpeakingStart(userId, username, avatar); } catch {}
 
       const opus = receiver.subscribe(userId, {
         end: { behavior: EndBehaviorType.AfterSilence, duration: SILENCE_MS }

@@ -1,0 +1,33 @@
+{
+  "wsUrl": "ws://localhost:7071",
+  "panelWidth": 320,
+  "fontScale": 1.0,
+  "theme": "glass",
+  "clickThrough": false,
+  "windowLeft": null,
+  "windowTop": null,
+  "windowWidth": 320,
+  "windowHeight": 540,
+  "timing": {
+    "synthIdleShortMs": 900,
+    "synthIdleLongMs": 400,
+    "promoteMinChars": 12,
+    "promoteMinWords": 3,
+    "coalesceTickMs": 80,
+    "estimatedRowWidth": 500,
+    "maxCharsPerFrame": 8,
+    "typingSpeedMultiplier": 0.77
+  },
+  "ui": {
+    "lane": {
+      "expandOnOverflow": true,
+      "expandMaxLines": 2,
+      "shrinkDelayMs": 800,
+      "fontFamily": "Segoe UI",
+      "fontSizePt": 15,
+      "allowReentryAfterFinalize": true,
+      "reentryDelayMs": 250,
+      "clearOnReentry": true
+    }
+  }
+}

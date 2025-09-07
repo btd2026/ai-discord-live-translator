@@ -1,0 +1,215 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  color: #007acc;
+  margin: 0 0 10px 0;
+}
+
+.header p {
+  color: #666;
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.control-group label {
+  font-weight: 600;
+  color: #333;
+}
+
+.control-group select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.control-group button {
+  padding: 10px 16px;
+  background: #007acc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.control-group button:hover:not(:disabled) {
+  background: #005a9e;
+}
+
+.control-group button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.demo-container {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+@media (max-width: 800px) {
+  .demo-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lane-container {
+  background: white;
+  border: 2px solid #007acc;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+  transition: width 300ms ease;
+}
+
+.demo-lane {
+  min-height: 120px;
+  background: white;
+}
+
+.metrics-panel {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  height: fit-content;
+}
+
+.metrics-panel h3, .metrics-panel h4 {
+  margin: 0 0 15px 0;
+  color: #007acc;
+}
+
+.metrics-panel h4 {
+  margin-top: 20px;
+  font-size: 16px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #007acc;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+}
+
+.info-panel {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.info-panel h3 {
+  margin: 0 0 15px 0;
+  color: #007acc;
+}
+
+.info-panel ul {
+  margin: 0 0 20px 0;
+  padding-left: 20px;
+}
+
+.info-panel li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.info-panel li strong {
+  color: #333;
+}
+
+/* Loading and status indicators */
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007acc, #00a0ff);
+  transition: width 150ms ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .app {
+    padding: 10px;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .control-group {
+    width: 100%;
+  }
+  
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+}

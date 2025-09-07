@@ -25,7 +25,9 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates
+    GatewayIntentBits.GuildVoiceStates,
+    // Ensure 'Server Members Intent' is enabled in the Discord Developer Portal.
+    GatewayIntentBits.GuildMembers
   ]
 });
 
