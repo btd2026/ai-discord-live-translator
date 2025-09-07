@@ -87,6 +87,9 @@ namespace DiscordCaptionOverlay
 
             // Start global coalescer
             InitCoalescer();
+
+            // Initialize language selector label from config
+            try { (FindName("LangButtonLabel") as TextBlock)!.Text = string.IsNullOrWhiteSpace(_cfg.targetLang) ? "multi" : _cfg.targetLang; } catch { }
         }
 
         private void InitCoalescer()
@@ -253,6 +256,8 @@ namespace DiscordCaptionOverlay
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(_cfg.wsUrl), _wsCts.Token);
                     _overlayVM.ConnectionStatus = "Connected";
+                    // Push current translation prefs upon connect
+                    await SendSetPrefsAsync(_cfg.translate, string.IsNullOrWhiteSpace(_cfg.targetLang) ? "multi" : _cfg.targetLang);
                     await ReceiveLoop(_ws, _wsCts.Token);
                 }
                 catch
@@ -322,7 +327,19 @@ namespace DiscordCaptionOverlay
 
         private void HandlePrefs(JsonElement e)
         {
-            // currently nothing to do for overlay
+            try
+            {
+                if (e.TryGetProperty("prefs", out var prefs) && prefs.ValueKind == JsonValueKind.Object)
+                {
+                    var tl = prefs.TryGetProperty("targetLang", out var t) ? (t.GetString() ?? _cfg.targetLang) : _cfg.targetLang;
+                    var tr = prefs.TryGetProperty("translate", out var trEl) ? (trEl.ValueKind == JsonValueKind.True || (trEl.ValueKind == JsonValueKind.String && (trEl.GetString()?.ToLowerInvariant() == "true"))) : _cfg.translate;
+                    _cfg.targetLang = string.IsNullOrWhiteSpace(tl) ? _cfg.targetLang : tl;
+                    _cfg.translate = tr;
+                    try { (FindName("LangButtonLabel") as TextBlock)!.Text = _cfg.targetLang; } catch { }
+                    ConfigStore.Save(_cfg);
+                }
+            }
+            catch { }
         }
 
         private void HandleSpeakersSnapshot(JsonElement e)
@@ -838,6 +855,45 @@ namespace DiscordCaptionOverlay
         {
             this.Close();
         }
+
+        // --- Language selector UI ---
+        private void LangButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var btn = sender as System.Windows.Controls.Button;
+                if (btn?.ContextMenu != null)
+                {
+                    btn.ContextMenu.PlacementTarget = btn;
+                    btn.ContextMenu.IsOpen = true;
+                }
+            }
+            catch { }
+        }
+
+        private async void LangMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var mi = sender as System.Windows.Controls.MenuItem;
+                var code = (mi?.Tag as string) ?? "multi";
+                await SetTargetLanguageAsync(code);
+            }
+            catch { }
+        }
+
+        private async Task SetTargetLanguageAsync(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) code = "multi";
+            _cfg.targetLang = code;
+            _cfg.translate = true; // selecting a language implies translate on
+            try { (FindName("LangButtonLabel") as TextBlock)!.Text = code; } catch { }
+            ConfigStore.Save(_cfg);
+            await SendSetPrefsAsync(_cfg.translate, _cfg.targetLang);
+        }
+
+        private Task SendSetPrefsAsync(bool translate, string targetLang)
+            => SendJsonAsync(new { type = "setPrefs", prefs = new { translate, targetLang } });
 
         protected override void OnClosed(EventArgs e)
         {

@@ -88,6 +88,43 @@
             <Ellipse Width="10" Height="10" Fill="#FFBD2E" Stroke="#DEA123" StrokeThickness="0.5"/>
           </Button>
           <Ellipse Width="10" Height="10" Margin="8,0,0,0" Fill="{Binding ConnectionStatus, Converter={StaticResource ConnectionToBrushConverter}}" DockPanel.Dock="Right" VerticalAlignment="Center"/>
+          
+          <!-- Language selector -->
+          <Button x:Name="LangButton" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
+                  Padding="6,2" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryText}"
+                  Click="LangButton_Click" ToolTip="Select target translation language">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Lang:" Margin="0,0,4,0"/>
+              <TextBlock x:Name="LangButtonLabel" Text="multi" FontWeight="SemiBold"/>
+            </StackPanel>
+            <Button.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Multilingual (multi)" Tag="multi" Click="LangMenuItem_Click"/>
+                <Separator/>
+                <MenuItem Header="English (en)" Tag="en" Click="LangMenuItem_Click"/>
+                <MenuItem Header="English (en-US)" Tag="en-US" Click="LangMenuItem_Click"/>
+                <MenuItem Header="English (en-AU)" Tag="en-AU" Click="LangMenuItem_Click"/>
+                <MenuItem Header="English (en-GB)" Tag="en-GB" Click="LangMenuItem_Click"/>
+                <MenuItem Header="English (en-IN)" Tag="en-IN" Click="LangMenuItem_Click"/>
+                <MenuItem Header="English (en-NZ)" Tag="en-NZ" Click="LangMenuItem_Click"/>
+                <Separator/>
+                <MenuItem Header="German (de)" Tag="de" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Dutch (nl)" Tag="nl" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Swedish (sv)" Tag="sv" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Swedish (sv-SE)" Tag="sv-SE" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Danish (da)" Tag="da" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Danish (da-DK)" Tag="da-DK" Click="LangMenuItem_Click"/>
+                <Separator/>
+                <MenuItem Header="Spanish (es)" Tag="es" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Spanish (es-419)" Tag="es-419" Click="LangMenuItem_Click"/>
+                <MenuItem Header="French (fr)" Tag="fr" Click="LangMenuItem_Click"/>
+                <MenuItem Header="French (fr-CA)" Tag="fr-CA" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Portuguese (pt)" Tag="pt" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Portuguese (pt-BR)" Tag="pt-BR" Click="LangMenuItem_Click"/>
+                <MenuItem Header="Portuguese (pt-PT)" Tag="pt-PT" Click="LangMenuItem_Click"/>
+              </ContextMenu>
+            </Button.ContextMenu>
+          </Button>
           <!-- Metrics toggle button -->
           <Button x:Name="MetricsToggle" Content="📊" Width="20" Height="20" Margin="4,0,0,0" DockPanel.Dock="Right" VerticalAlignment="Center" 
                   FontSize="10" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryText}"

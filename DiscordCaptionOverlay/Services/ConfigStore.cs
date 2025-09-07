@@ -17,6 +17,10 @@ namespace DiscordCaptionOverlay.Services
         public double windowHeight { get; set; } = 540;
         public TimingConfig timing { get; set; } = new TimingConfig();
         public UiConfig ui { get; set; } = new UiConfig();
+
+        // Translation preferences (sent to websocket server as setPrefs)
+        public bool translate { get; set; } = true;
+        public string targetLang { get; set; } = "multi"; // nova-3 multilingual by default
     }
 
     public class UiConfig
