@@ -1,0 +1,2191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Call Translator for Discord – Live Captions & Real-Time Translation Overlay for Gaming & Streaming</title>
+  <meta name="description" content="Add live captions and instant translations to Discord calls for gaming, streaming, and team chats. Clean glass overlay, low distraction, and per-user language." />
+  <link rel="canonical" href="https://YOURDOMAIN.com/" />
+  <meta name="robots" content="index,follow" />
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Live Call Translator for Discord – Live Captions & Real-Time Translation Overlay" />
+  <meta property="og:description" content="Add live captions and instant translations to Discord calls for gaming, streaming, and team chats. Clean glass overlay, low distraction, and per-user language." />
+  <meta property="og:url" content="https://YOURDOMAIN.com/" />
+  <meta property="og:image" content="https://YOURDOMAIN.com/assets/og-image.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/logo.png">
+
+  <!-- Fonts & Tailwind CDN (swap to self-host later if desired) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Brand tokens + theme -->
+  <meta name="theme-color" content="#5EA2EF">
+  <style>
+    :root{
+      --brand:#5EA2EF;            /* primary neon blue */
+      --brand-2:#7C4DFF;          /* secondary purple */
+      --ink:#fff; --bg:#0A0B0E;
+    }
+  </style>
+  <style>
+    /* Layout for the trio */
+    .benefits-top{
+      --ring: rgba(255,255,255,.07);
+      --panel: rgba(255,255,255,.035);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: clamp(14px,2.2vw,18px);
+      margin-top: 14px;
+    }
+    @media (max-width: 980px){ .benefits-top{ grid-template-columns: 1fr; } }
+
+    /* Card */
+    .benefit-card{
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      grid-template-rows: auto auto;
+      column-gap: 14px; row-gap: 8px; align-items: start;
+      padding: clamp(14px,1.9vw,18px) clamp(16px,2.3vw,22px);
+      background: var(--panel); outline: 1px solid var(--ring);
+      border-radius: 20px; backdrop-filter: blur(8px) saturate(140%);
+      text-decoration: none; color: inherit; position: relative; overflow: hidden;
+      transition: transform .22s ease, box-shadow .22s ease, outline-color .22s ease;
+    }
+    .benefit-card:focus-visible{ outline-color: rgba(124,77,255,.45); box-shadow: 0 0 0 4px rgba(124,77,255,.18); }
+    .benefit-card:hover{ transform: translateY(-2px); outline-color: rgba(124,77,255,.22); box-shadow: 0 10px 24px rgba(0,0,0,.35), 0 0 24px rgba(124,77,255,.20); }
+
+    /* Icon badge */
+    .benefit-card__icon{
+      grid-row: 1 / span 2; display: grid; place-items: center;
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(145deg,#2B3046 0%, #171A25 100%);
+      outline: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 0 0 2px rgba(124,77,255,.10), 0 8px 24px rgba(17,12,46,.35);
+    }
+    .benefit-card .icon{ width: 26px; height: 26px; filter: drop-shadow(0 0 6px rgba(124,77,255,.55)); transition: transform .25s ease, filter .25s ease; }
+    .benefit-card:hover .icon{ transform: translateY(-1px); filter: drop-shadow(0 0 10px rgba(124,77,255,.75)); }
+
+    /* Content */
+    .benefit-card__content{ align-self: center; }
+    .benefit-card__title{ margin: 0; font-weight: 800; letter-spacing: -0.012em; line-height: 1.12; font-size: clamp(17px, 2vw, 22px); text-wrap: balance; }
+    .benefit-card__text{ margin: 6px 0 0 0; color: rgba(255,255,255,.86); line-height: 1.45; font-size: clamp(13.5px, 1.6vw, 16px); }
+
+    /* Entrance motion (gentle, on scroll) */
+    .benefit-card{ opacity: 0; transform: translateY(8px); }
+    .benefits-top.is-visible .benefit-card{ animation: benefitFade .6s ease forwards; }
+    .benefits-top.is-visible .benefit-card:nth-child(2){ animation-delay: .08s; }
+    .benefits-top.is-visible .benefit-card:nth-child(3){ animation-delay: .16s; }
+    @keyframes benefitFade{ to{ opacity:1; transform: translateY(0); } }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){ .benefit-card, .benefit-card .icon{ transition: none; animation: none; } }
+  </style>
+  <style>
+  /* Hero demo intro animation */
+  @keyframes demoIntro {
+    0%   { opacity: 0; transform: translateY(16px) scale(0.985); filter: brightness(0.86) blur(4px); }
+    60%  { opacity: 1; transform: translateY(0) scale(1.015);  filter: brightness(1.05) blur(0); }
+    100% { opacity: 1; transform: translateY(0) scale(1);      filter: brightness(1) blur(0); }
+  }
+  .animate-demoIntro {
+    animation: demoIntro 1000ms ease-out forwards;
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    .animate-demoIntro { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
+  }
+
+  /* Ensure the demo container behaves nicely across breakpoints */
+  .demo-video-wrapper {
+    /* If your layout needs a fixed aspect, uncomment one of these options: */
+    /* aspect-ratio: 16 / 9; */
+    /* Or: set a min-height for tall layouts */
+    /* min-height: 260px; */
+  }
+  </style>
+  <style>
+    /* container */
+    #benefit-gaming{
+      /* glass + subtle outline to match the site */
+      --ring: rgba(255,255,255,.06);
+      --panel: rgba(255,255,255,.03);
+      background: var(--panel);
+      outline: 1px solid var(--ring);
+      border-radius: 22px;
+      backdrop-filter: blur(8px) saturate(140%);
+      /* layout */
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      grid-template-rows: auto auto;
+      column-gap: 14px;
+      row-gap: 8px;
+      padding: 18px 20px;
+      transition: transform .25s ease, box-shadow .25s ease, outline-color .25s ease;
+    }
+    /* hover/keyboard focus */
+    #benefit-gaming:hover,
+    #benefit-gaming:focus-within{
+      transform: translateY(-2px);
+      outline-color: rgba(124,77,255,.25);
+      box-shadow:
+        0 10px 24px rgba(0,0,0,.35),
+        0 0 24px rgba(124,77,255,.25);
+    }
+
+    /* icon badge */
+    .benefit-gaming__icon{
+      grid-row: 1 / span 2; /* vertically spans title + text */
+      display: grid;
+      place-items: center;
+      width: 44px; height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(145deg,#2A2F45 0%, #171A25 100%);
+      /* neon ring */
+      outline: 1px solid rgba(255,255,255,.08);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.04),
+        0 0 0 2px rgba(124,77,255,.10),
+        0 8px 24px rgba(17, 12, 46, .4);
+      color: #B69CFF; /* icon glyph color */
+    }
+
+    /* title */
+    .benefit-gaming__title{
+      margin: 2px 0 0 0;
+      font-weight: 800;
+      letter-spacing: -0.012em;
+      line-height: 1.12;
+      /* responsive, but tighter than hero */
+      font-size: clamp(18px, 2.2vw, 28px);
+      text-wrap: balance;
+    }
+
+    /* body */
+    .benefit-gaming__text{
+      margin: 6px 0 0 0;
+      color: rgba(255,255,255,.84);
+      line-height: 1.45;
+      letter-spacing: 0;
+      font-size: clamp(14px, 1.6vw, 17px);
+    }
+
+    /* put both sentences on one line on wide screens, allow break on small screens */
+    @media (max-width: 740px){
+      .benefit-gaming__break{ display: none; }
+    }
+
+    /* optional: respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      #benefit-gaming{ transition: none; }
+    }
+  </style>
+  <style>
+    .feature-icon{
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      display: inline-block;
+      filter: drop-shadow(0 0 6px rgba(124,77,255,.55));
+      transition: transform .25s ease, filter .25s ease;
+    }
+    .feature-card:hover .feature-icon{
+      transform: translateY(-2px);
+      filter: drop-shadow(0 0 10px rgba(124,77,255,.75));
+    }
+  </style>
+  <style>
+    /* Quick benefits line (optional) */
+    .hero-quick-benefits{
+      display:flex; justify-content:center; gap:1.5rem; flex-wrap:wrap;
+      margin-top:.9rem; margin-bottom:.5rem;
+      color:rgba(255,255,255,.8); font-size:.95rem;
+    }
+    .hero-quick-benefits li{ display:inline-flex; align-items:center; gap:.5rem; white-space:nowrap; }
+    .qb-dot{
+      width:8px; height:8px; border-radius:999px; display:inline-block;
+      background: radial-gradient(100% 100% at 50% 50%, #5EA2EF, #7C4DFF);
+      box-shadow: 0 0 0 2px rgba(124,77,255,.12);
+    }
+
+    /* After removing mini-cards, pull the next section up a bit */
+    section#spotlight{ margin-top: 18px; }
+
+    /* Ensure chips row breathes slightly more now that cards are gone */
+    .hero-chip-row{ margin-top: 10px; }
+  </style>
+  <style>
+    /* Compact platform badges (right side of heading) */
+    .bf-badge{
+      display:inline-flex; align-items:center; gap:.4rem;
+      padding:.35rem .55rem; border-radius:999px;
+      font-size:.8rem; color:rgba(255,255,255,.92);
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .bf-badge svg{ color:#a78bfa; }
+
+    /* Spotlight tiles */
+    .spot-tile{
+      position:relative; overflow:hidden;
+      border-radius:16px;
+      background: rgba(255,255,255,.045);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.04);
+      padding:18px 16px 20px;
+      transform: translateY(10px); opacity:0;
+      transition: transform .5s ease, opacity .5s ease, box-shadow .35s ease, background .35s ease;
+    }
+    /* NEW animation: gradient edge sweep (not used elsewhere) */
+    .spot-tile::after{
+      content:""; position:absolute; inset:0; pointer-events:none;
+      background: conic-gradient(from 180deg at 50% 50%, rgba(94,162,239,.0), rgba(94,162,239,.22), rgba(124,77,255,.22), rgba(94,162,239,.0) 70%);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask-composite: exclude; -webkit-mask-composite: xor;
+      padding:1px; border-radius:16px; opacity:.0;
+      transition: opacity .45s ease;
+    }
+    .spot-tile:hover{ box-shadow: 0 16px 36px rgba(124,77,255,.18), inset 0 0 0 1px rgba(255,255,255,.05); }
+    .spot-tile:hover::after{ opacity:.9; }
+
+    /* micro-layout */
+    .spot-head{ display:flex; align-items:center; gap:.6rem; margin-bottom:.35rem; }
+    .spot-icon{
+      width:28px; height:28px; border-radius:10px;
+      display:grid; place-items:center;
+      color:#a78bfa;
+      background: radial-gradient(100% 100% at 50% 0%, rgba(124,77,255,.28), rgba(124,77,255,.08));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .spot-title{ font-weight:600; color:rgba(255,255,255,.98); }
+    .spot-copy{ color:rgba(255,255,255,.82); font-size:.95rem; line-height:1.4; }
+
+    /* Entrance reveal */
+    .reveal.in{ opacity:1; transform:none; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){ .spot-tile, .spot-tile::after{ transition:none; } }
+  </style>
+  <style>
+    /* Hide horizontal scrollbar while preserving scrollability */
+    .no-scrollbar::-webkit-scrollbar{ display:none; }
+    .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+
+    /* Chips */
+    .bf-chip{
+      position:relative;
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.5rem .9rem;
+      font-size:.9rem; color:rgba(255,255,255,.92);
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:999px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+      transition: transform .25s ease, border-color .25s ease, background .25s ease, box-shadow .25s ease;
+      will-change: transform;
+    }
+    .bf-chip:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.07);
+      border-color: rgba(124,77,255,.25);
+      box-shadow: 0 6px 24px rgba(124,77,255,.15), inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    .bf-ico{ width:16px; height:16px; color:#a78bfa; opacity:.95; }
+
+    /* Tiny accent dot for non-icon chips */
+    .bf-dot{
+      width:8px; height:8px; border-radius:999px; display:inline-block;
+      background: radial-gradient(100% 100% at 50% 50%, #5EA2EF, #7C4DFF);
+      box-shadow: 0 0 0 2px rgba(124,77,255,.15);
+    }
+
+    /* Sub-cards under band */
+    .bf-card{
+      padding:14px 16px;
+      border-radius:14px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.04);
+      transform: translateY(8px); opacity:0;
+      transition: opacity .5s ease, transform .5s ease;
+    }
+
+    /* Entrance reveal utility */
+    .reveal.in{ opacity:1; transform:none; }
+
+    /* Scroller momentum & auto-scroll */
+    .bf-scroller{ scroll-behavior: smooth; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){ .bf-chip{ transition: none; } .bf-card{ transition: none; } }
+  </style>
+  <style>
+    /* Inline social proof (no chip shapes) */
+    .sp-row{
+      display:flex; align-items:center; gap:10px;
+      margin-top: 10px;         /* space under form */
+      margin-bottom: 6px;       /* space above chips row */
+      pointer-events:auto;
+      transform: translateY(4px); opacity: 0;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    .sp-row.in{ transform:none; opacity:1; }
+
+    .sp-avatars{ display:inline-flex; align-items:center; }
+    .sp-avatars img{
+      width:26px; height:26px; object-fit:cover;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.45);
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+      margin-right:-4px;                /* soft overlap */
+      background:#222;
+    }
+    .sp-avatars img:last-child{ margin-right:0; }
+
+    .sp-text{
+      font-size:.92rem; line-height:1.2; opacity:.9;
+      white-space:nowrap;               /* keep it compact */
+    }
+
+    /* Mobile: allow wrap to avoid crowding */
+    @media (max-width: 420px){ .sp-text{ white-space:normal } }
+
+    /* Add a touch more breathing room above the hero chips row */
+    #mini-benefits, .hero-chips, .benefit-band{ margin-top: 8px; }
+  </style>
+  <style>
+    /* Compact hero benefits row */
+    .hero-benefits{
+      display:flex; gap:12px; align-items:center;
+      margin-top:12px; flex-wrap:wrap;
+    }
+    .hero-benefit{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px; border-radius:999px;
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 6px 24px rgba(0,0,0,.35);
+      transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+      will-change: transform;
+    }
+    .hero-benefit:hover{
+      transform: translateY(-1px);
+      background:rgba(255,255,255,0.06);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 10px 28px rgba(0,0,0,.45);
+    }
+    .hb-ico{
+      width:22px; height:22px; display:inline-grid; place-items:center;
+      border-radius:999px; background:rgba(255,255,255,0.06);
+      box-shadow: 0 2px 10px rgba(0,0,0,.35) inset;
+    }
+    .hb-label{ font-size:14px; line-height:1; color:#e9edf3; }
+    @media (max-width: 720px){
+      .hero-benefits{ gap:10px; }
+      .hb-label{ font-size:13px; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      .hero-benefit{ transition:none; }
+    }
+  </style>
+  <style>
+    /* Compact hero mini row */
+    .hero-mini-row{
+      display:flex;
+      gap:18px;                /* space between items */
+      align-items:center;
+      margin-top:14px;
+      flex-wrap:wrap;          /* allows wrap on very small screens */
+    }
+    @media (min-width:640px){
+      .hero-mini-row{ flex-wrap:nowrap; }  /* single line from sm and up */
+    }
+    .hero-mini{
+      position:relative;
+      font-size:14px;
+      line-height:1.6;
+      color:rgba(255,255,255,0.82);
+      padding-left:18px;        /* room for dot */
+      white-space:nowrap;       /* keep phrases intact */
+    }
+    .hero-mini::before{
+      content:"";
+      position:absolute;
+      left:0; top:50%;
+      width:6px; height:6px;
+      border-radius:50%;
+      transform:translateY(-50%);
+      background: radial-gradient( circle at 40% 40%, #A78BFA 0%, #60A5FA 60%, transparent 70%);
+      box-shadow: 0 0 8px rgba(100, 180, 255, 0.6);
+      opacity:.9;
+    }
+  </style>
+  <style>
+    /* --- Mini benefit cards (hero row) --- */
+    .mini-benefit{
+      position:relative; isolation:isolate;
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: 0 12px 28px rgba(0,0,0,.35);
+      padding:14px 14px 12px 14px;
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      backdrop-filter: blur(10px);
+    }
+    .mini-benefit::before{
+      /* gradient border glow */
+      content:""; position:absolute; inset:-1px; border-radius:inherit; z-index:-1;
+      background: radial-gradient(120% 120% at var(--mx,50%) var(--my,50%), rgba(94,162,239,.18), rgba(124,77,255,.12), transparent 60%);
+      opacity:.6; transition: opacity .2s ease;
+    }
+    .mini-benefit:hover{ transform: translateY(-2px); box-shadow: 0 18px 36px rgba(0,0,0,.45); border-color: rgba(255,255,255,.14); }
+    .mini-benefit:hover::before{ opacity:.9; }
+
+    .mini-title{ font-weight:700; line-height:1.25; }
+    .mini-sub{ font-size:.9rem; opacity:.82; margin-top:.15rem; }
+
+    /* Icon pulse + glow */
+    .mini-icon svg{ width:22px; height:22px; filter: drop-shadow(0 6px 18px rgba(124,77,255,.22)); }
+    .mini-benefit:hover .mini-icon svg{ animation: miniPulse .9s ease-in-out; }
+    @keyframes miniPulse{ 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+
+    /* Small stagger on reveal (reuse your .reveal/.in) */
+    .mini-benefit.reveal.in{ animation-delay: calc(var(--d, 0) * 70ms) !important; }
+
+    /* Reduced motion fallback */
+    @media (prefers-reduced-motion: reduce){
+      .mini-benefit{ transition:none }
+      .mini-benefit:hover{ transform:none }
+      .mini-icon svg{ animation:none !important }
+    }
+  </style>
+  <style>
+    /* ---- FAQ (scoped to #faq) ---- */
+    #faq .glass {
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 32px rgba(0,0,0,.35);
+      overflow: hidden;
+    }
+
+    /* Summary row */
+    #faq details > summary {
+      list-style: none;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:16px; padding:16px 18px; cursor:pointer; user-select:none;
+      position: relative;
+    }
+    /* Remove default marker */
+    #faq details > summary::-webkit-details-marker { display:none; }
+
+    /* Chevron uses mask so it can take gradient without SVG conflicts */
+    #faq .chev {
+      width:22px; height:22px; flex:0 0 22px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M6 9l6 6 6-6" fill="black"/></svg>') center/contain no-repeat;
+              mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M6 9l6 6 6-6" fill="black"/></svg>') center/contain no-repeat;
+      transition: transform .25s ease;
+    }
+
+    /* Hover/press states */
+    #faq details:hover { box-shadow: 0 16px 40px rgba(0,0,0,.42); }
+    #faq details:active { transform: translateY(1px); }
+
+    /* Panel animation wrapper */
+    #faq .answer {
+      overflow: clip; padding: 0 18px; max-height: 0;
+      opacity: 0; transform: translateY(-4px);
+      transition: max-height .34s cubic-bezier(.22,.61,.36,1), opacity .2s ease, transform .2s ease;
+    }
+
+    /* Open state */
+    #faq details[open] .answer {
+      padding: 0 18px 16px 18px;
+      max-height: 260px;      /* large enough for your longest answer */
+      opacity: 0.9; transform: translateY(0);
+    }
+    #faq details[open] .chev { transform: rotate(180deg); }
+
+    /* Magnetic highlight ring (subtle, consistent with site) */
+    #faq details::after{
+      content:""; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+      background: radial-gradient(120% 120% at var(--mx,50%) var(--my,50%), rgba(94,162,239,.14), rgba(124,77,255,.10), transparent 60%);
+      opacity:.6; transition: opacity .2s ease;
+    }
+    #faq details:hover::after{ opacity:.9; }
+
+    /* Stagger reveal (reuse your .reveal/.in) */
+    #faq .reveal.in { animation-delay: var(--d, 0ms) !important; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      #faq .answer { transition:none; max-height:none !important; opacity:1; transform:none; padding: 0 18px 16px 18px; }
+      #faq .chev { transition:none; }
+    }
+  </style>
+  <style>
+    /* Easy setup card: subtle breathing glow + shimmer on icon */
+    .feature-card.easy-setup .feature-ring{
+      opacity:.75;
+      animation: ringBreathe 3.6s ease-in-out infinite;
+    }
+    @keyframes ringBreathe{
+      0%,100%{ background: radial-gradient(120% 120% at var(--mx,50%) var(--my,50%), rgba(94,162,239,.16), rgba(124,77,255,.10), transparent 58%); }
+      50%     { background: radial-gradient(120% 120% at var(--mx,50%) var(--my,50%), rgba(94,162,239,.26), rgba(124,77,255,.18), transparent 60%); }
+    }
+
+    /* Icon shimmer sweep (very light) */
+    .feature-card.easy-setup .feature-icon svg{
+      filter: drop-shadow(0 6px 20px rgba(124,77,255,.22));
+      background: linear-gradient(90deg, rgba(255,255,255,.95), rgba(255,255,255,.65), rgba(255,255,255,.95));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: iconSweep 7s ease-in-out infinite;
+    }
+    @keyframes iconSweep { 0%{opacity:.9} 50%{opacity:1} 100%{opacity:.9} }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .feature-card.easy-setup .feature-ring,
+      .feature-card.easy-setup .feature-icon svg{ animation:none!important }
+    }
+  </style>
+  <style>
+    /* Benefit band (different from hero chips) */
+    .benefit-band{
+      position: relative; overflow: hidden; border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(94,162,239,.12), rgba(124,77,255,.10));
+    }
+    .benefit-track{ display:flex; gap:18px; white-space:nowrap; padding:10px 18px; animation: benefitRun 26s linear infinite; }
+    .benefit-band:hover .benefit-track{ animation-play-state: paused; }
+    .benefit{
+      font-size:.9rem; padding:.55rem .8rem; border-radius:999px;
+      background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); backdrop-filter: blur(6px);
+    }
+    @keyframes benefitRun{ from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+    /* Feature cards: magnetic glow + gradient ring */
+    .feature-card{
+      position: relative; isolation:isolate; border-radius: 18px;
+      background: rgba(12,14,18,.55); border:1px solid rgba(255,255,255,.08);
+      overflow: hidden; padding: 18px; min-height: 168px;
+      transform-style: preserve-3d; will-change: transform, box-shadow;
+    }
+    .feature-card .feature-ring{
+      position:absolute; inset:-1px; border-radius:inherit; z-index:-1;
+      background: radial-gradient(120% 120% at var(--mx,50%) var(--my,50%), rgba(94,162,239,.18), rgba(124,77,255,.10), transparent 60%);
+      transition: opacity .2s ease; opacity:.6;
+    }
+    .feature-card:hover .feature-ring{ opacity:.9; }
+    .feature-icon svg{ width:24px; height:24px }
+    .feature-title{ margin-top:.6rem; font-weight:700 }
+    .feature-text{ margin-top:.35rem; opacity:.82; }
+
+    /* Staggered reveal already exists .reveal/.in; add small delay per item */
+    .feature-card.reveal.in{ animation-delay: calc(var(--d, 0) * 80ms) !important; }
+
+    /* Reduced motion: keep static */
+    @media (prefers-reduced-motion: reduce){ .benefit-track{ animation:none!important } }
+  </style>
+  <style>
+    /* Glassy header */
+    .nav-glass{
+      background: rgba(11,12,16,.6);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 35px rgba(0,0,0,.35);
+      transition: box-shadow .25s ease, border-color .25s ease, background .25s ease;
+    }
+    #site-header.is-scrolled .nav-glass{
+      background: rgba(11,12,16,.72);
+      border-color: rgba(255,255,255,.12);
+      box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    }
+
+    /* Links */
+    .nav-link{
+      position: relative;
+      padding: .5rem .75rem;
+      border-radius: .75rem;
+      font-size: .95rem;
+      color: rgba(255,255,255,.86);
+      transition: color .15s ease, background .15s ease;
+    }
+    .nav-link:hover{ color:#fff; background: rgba(255,255,255,.06); }
+    .nav-link.active::after{
+      content:""; position:absolute; left:12px; right:12px; bottom:6px; height:2px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      border-radius: 2px;
+    }
+
+    /* CTA buttons */
+    .btn-cta{
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.55rem .9rem; border-radius: .9rem;
+      color:#0b0c10; font-weight:600;
+      background: linear-gradient(90deg, rgba(255,255,255,.85), rgba(255,255,255,1), rgba(255,255,255,.85));
+      background-size: 220% 100%;
+      box-shadow: 0 8px 24px rgba(124,77,255,.22);
+      transition: background-position .35s ease, transform .12s ease;
+    }
+    .btn-cta:hover{ background-position: 100% 0; transform: translateY(-1px); }
+
+    /* Mobile */
+    .icon-btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      height:40px; width:40px; border-radius: .9rem;
+      color: rgba(255,255,255,.9); background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .mobile-drawer[hidden]{ display:none; }
+    .mobile-link{
+      display:block; padding:.8rem 1rem; border-radius:.9rem;
+      color: rgba(255,255,255,.9);
+    }
+    .mobile-link:hover{ background: rgba(255,255,255,.06); color:#fff; }
+    .mobile-cta{
+      display:block; text-align:center; margin:.25rem; padding:.75rem 1rem; border-radius:.9rem;
+      font-weight:600; color:#0b0c10;
+      background: linear-gradient(90deg, rgba(255,255,255,.9), rgba(255,255,255,1));
+    }
+
+    /* Reduce motion */
+    @media (prefers-reduced-motion: reduce){ .btn-cta{ transition:none } }
+  </style>
+  <style>
+    /* --- Headline animated gradient (liquid-glass shimmer) --- */
+    .headline-shimmer{
+      background: linear-gradient(90deg, #fff 20%, rgba(255,255,255,.85) 35%, var(--brand) 50%, var(--brand-2) 65%, #fff 80%);
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      background-size: 300% 100%; animation: headSweep 8s ease-in-out infinite;
+      text-shadow: 0 8px 30px rgba(124,77,255,.08);
+    }
+    @keyframes headSweep{0%{background-position:0 0}50%{background-position:100% 0}100%{background-position:0 0}}
+
+    /* --- Gradient band behind chips + smooth ticker --- */
+    .chips-band{
+      position:relative; overflow:hidden; border-radius:14px;
+      border:1px solid rgba(255,255,255,.08);
+      background: radial-gradient(120% 120% at 10% 20%, rgba(94,162,239,.18), rgba(124,77,255,.10), rgba(0,0,0,.0) 70%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+    .chips-track{ display:flex; gap:16px; white-space:nowrap; padding:10px 16px; will-change: transform; animation: chipsMarquee 22s linear infinite; }
+    .chips-band:hover .chips-track{ animation-play-state: paused; }
+    @keyframes chipsMarquee{ from{transform:translateX(0)} to{transform:translateX(-50%)} }
+    .chip{ padding:.5rem .75rem; border-radius:.75rem; backdrop-filter: blur(6px);
+      border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06);
+    }
+
+    /* --- Scroll reveal: fade/slide up --- */
+    .reveal{opacity:0; transform: translateY(16px);} .reveal.in{animation: rise .6s cubic-bezier(.22,.61,.36,1) forwards;}
+    @keyframes rise{to{opacity:1; transform:none}}
+
+    /* --- Ripple for buttons --- */
+    .ripple{ position:relative; overflow:hidden; }
+    .ripple:after{
+      content:""; position:absolute; width:0;height:0; border-radius:9999px;
+      background: radial-gradient(circle, rgba(255,255,255,.35), rgba(255,255,255,0) 60%);
+      transform: translate(-50%,-50%); opacity:0; transition: width .45s ease, height .45s ease, opacity .6s ease;
+    }
+    .ripple.is-rippling:after{ opacity:.65; }
+
+    /* --- Tilt on cards (subtle) --- */
+    .tilt{ will-change: transform; transition: transform .2s ease; transform-style: preserve-3d; }
+    .tilt:hover{ transform: perspective(900px) rotateX(1.5deg) rotateY(-1.5deg); }
+
+    /* --- Parallax aurora layers --- */
+    .parallax{ will-change: transform; transition: transform .12s linear; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .headline-shimmer, .chips-track{ animation:none!important }
+      .reveal{opacity:1; transform:none}
+    }
+  </style>
+  
+  <!-- Removed old favicon variants; using assets/logo.png for all browsers -->
+  <link rel="manifest" href="/assets/icons/site.webmanifest">
+  <style>
+    :root{
+      --pri:#5EA2EF; --sec:#7C4DFF; --ink:#ffffff; --bg:#0A0B0E;
+    }
+    /* Aurora sweep */
+    @keyframes aurora {
+      0%{transform:translate3d(-10%, -6%,0) scale(1);} 
+      50%{transform:translate3d(6%, 4%,0) scale(1.05);} 
+      100%{transform:translate3d(-10%, -6%,0) scale(1);} 
+    }
+    /* Gradient border glow */
+    @keyframes borderFlow { 0%{background-position:0% 50%;} 100%{background-position:200% 50%;} }
+    /* Scroll reveal */
+    @keyframes riseIn {0%{opacity:0; transform:translateY(16px) scale(.98);}100%{opacity:1; transform:none;}}
+    /* Button shimmer */
+    @keyframes shimmer {0%{background-position:-150% 0;}100%{background-position:250% 0;}}
+    /* Ripple */
+    .ripple{position:relative; overflow:hidden;}
+    .ripple:after{content:""; position:absolute; inset:auto; width:0;height:0;border-radius:9999px; background:radial-gradient(circle, rgba(255,255,255,.35), rgba(255,255,255,0) 60%); transform:translate(-50%,-50%); pointer-events:none; opacity:0; transition:opacity .6s ease;}
+    /* Card gradient border utility */
+    .card-bling{position:relative;}
+    .card-bling:before{
+      content:""; position:absolute; inset:-1px; border-radius:16px;
+      background:linear-gradient(90deg, rgba(94,162,239,.8), rgba(124,77,255,.8), rgba(94,162,239,.8));
+      background-size:200% 100%; filter:blur(10px); opacity:.18; z-index:-1;
+      animation:borderFlow 6s linear infinite;
+    }
+    /* Icon circle */
+    .icon-badge{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg, rgba(94,162,239,.25), rgba(124,77,255,.2)); border:1px solid rgba(255,255,255,.12)}
+    /* Reveal utility */
+    .reveal{opacity:0; transform:translateY(16px) scale(.98);} .reveal.in{animation:riseIn .6s cubic-bezier(.22,.61,.36,1) forwards;}
+    /* Sticky header frosting */
+    .frosty{backdrop-filter: blur(8px); background-color:rgba(10,11,14,.4); border-bottom:1px solid rgba(255,255,255,.08)}
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none;} .reveal.in, .card-bling:before{animation:none!important} }
+  </style>
+  <style>
+    /* Caption bubbles (bounded) */
+    .caption { max-width: min(92%, 760px); align-self: flex-start; background: rgba(5,6,8,.65); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: .6rem .75rem; color: #fff; box-shadow: 0 8px 28px rgba(0,0,0,.35); backdrop-filter: blur(6px); }
+    .caption.right { align-self: flex-end; }
+    .caption .meta { display: inline-flex; align-items: center; gap: .45rem; font-size: 12px; opacity: .9; }
+    .caption .dot { width: .55rem; height: .55rem; border-radius: 999px; display: inline-block; }
+    .caption .line { font-size: clamp(14px, 1.6vw, 16px); line-height: 1.35; margin-top: .25rem; }
+    /* Enter/leave animation (simple, readable) */
+    @keyframes capIn { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+    @keyframes capOut { to { opacity: 0; transform: translateY(-6px) } }
+    .cap-enter { animation: capIn .28s ease-out both; }
+    .cap-exit  { animation: capOut .25s ease-in both; }
+    /* Clamp to stage: no overflow beyond rounded box */
+    #captions-scroll { mask-image: linear-gradient(180deg, transparent 0, #000 12px, #000 calc(100% - 0px)); }
+  </style>
+  <style>
+    /* Headline gradient sweep (subtle) */
+    .sweep {
+      background: linear-gradient(90deg, #ffffff 0%, #9aa9ff 40%, #7C4DFF 60%, #ffffff 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      background-size: 300% 100%; animation: sweep 9s ease-in-out infinite;
+    }
+    @keyframes sweep { 0%{background-position:0% 0} 50%{background-position:100% 0} 100%{background-position:0% 0} }
+
+    /* Ticker */
+    .ticker { animation: ticker 22s linear infinite; }
+    @keyframes ticker { 0%{ transform: translateX(0);} 100%{ transform: translateX(-50%);} }
+
+    /* Typing effect */
+    .cursor::after { content:"▍"; margin-left:2px; opacity:.8; animation: blink 1s steps(1) infinite; }
+    @keyframes blink {50%{opacity:.2}}
+
+    /* Hero entrance */
+    .enter { opacity:0; transform: translateY(16px) scale(.98); }
+    .enter.in { animation: riseIn .7s cubic-bezier(.22,.61,.36,1) forwards; }
+    @keyframes riseIn { from{opacity:0; transform: translateY(16px) scale(.98);} to{opacity:1; transform:none;} }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce){ .ticker, .sweep { animation: none !important; } }
+  </style>
+  <style>
+    /* Caption bubble */
+    .caption-bubble {
+      background: rgba(0,0,0,.50);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      padding: .55rem .75rem;
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+      backdrop-filter: blur(6px);
+    }
+    .caption-line { font-size: clamp(14px, 1.6vw, 16px); line-height: 1.35; }
+    .badge {
+      display:inline-flex; align-items:center; gap:.4rem;
+      font-size: 12px; padding:.25rem .5rem; border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05);
+    }
+    .badge-dot { width:.6rem; height:.6rem; border-radius:999px; display:inline-block; }
+    .typing::after { content:"▍"; margin-left:2px; opacity:.85; animation: blink 1s steps(1) infinite; }
+    @keyframes blink {50%{opacity:.2}}
+  </style>
+  <style>
+    .rippling:after{ left: var(--ripX); top: var(--ripY); width: var(--rSize); height: var(--rSize); opacity:.65; transition: width .45s ease, height .45s ease, opacity .6s ease; }
+  </style>
+  <style>
+    /* Gradient background drift */
+    @keyframes bgShift {
+      0% { transform: translate3d(0,0,0) scale(1); }
+      50% { transform: translate3d(3%, -2%, 0) scale(1.03); }
+      100% { transform: translate3d(0,0,0) scale(1); }
+    }
+    /* Card reveal on scroll */
+    @keyframes riseIn {
+      0% { opacity:0; transform: translateY(14px) scale(.98); }
+      100% { opacity:1; transform: translateY(0) scale(1); }
+    }
+    /* Subtle glow pulse */
+    @keyframes glowPulse {
+      0%,100% { box-shadow: 0 0 0px rgba(94,162,239,0.0); }
+      50%     { box-shadow: 0 0 24px rgba(94,162,239,0.25); }
+    }
+    /* Shimmer underline for links/CTA */
+    @keyframes shimmer {
+      0% { background-position: -120% 0; }
+      100% { background-position: 220% 0; }
+    }
+
+    /* Utilities */
+    .animate-bgShift { animation: bgShift 18s ease-in-out infinite; }
+    .reveal { opacity:0; transform: translateY(14px) scale(.98); }
+    .reveal.in { animation: riseIn .6s cubic-bezier(.22,.61,.36,1) forwards; }
+    .hover-glow:hover { box-shadow: 0 14px 40px rgba(94,162,239,.18); border-color: rgba(255,255,255,.18); }
+    .chip:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+    .cta-ring { position: relative; }
+    .cta-ring:before {
+      content:""; position:absolute; inset:-2px; border-radius:16px;
+      background: linear-gradient(90deg, rgba(94,162,239,.0), rgba(94,162,239,.55), rgba(124,77,255,.55), rgba(94,162,239,.0));
+      background-size: 220% 100%; filter: blur(10px); opacity:.8; z-index:-1;
+      animation: shimmer 2.8s linear infinite;
+    }
+    .gradient-text {
+      background: linear-gradient(90deg, #5EA2EF, #9aa9ff, #7C4DFF);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .animate-bgShift, .reveal.in, .cta-ring:before { animation: none !important; }
+      .reveal { opacity:1; transform:none; }
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary:'#5EA2EF', darkbg:'#0A0B0E' },
+          boxShadow: { glass:'0 10px 30px rgba(0,0,0,0.40)' }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; }
+    .glass { background: radial-gradient(120% 120% at 10% 10%, rgba(255,255,255,0.10), rgba(255,255,255,0.03)); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .ring-aurora { position: relative; }
+    .ring-aurora:before { content:""; position:absolute; inset:-2px; border-radius:24px; background: conic-gradient(from 180deg, #5EA2EF, #7C4DFF, #5EA2EF); filter: blur(14px); opacity:.35; z-index:-1; }
+  </style>
+
+  <!-- Schema.org: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Live Call Translator for Discord",
+    "operatingSystem": "Windows, macOS",
+    "applicationCategory": "CommunicationApplication",
+    "softwareVersion": "beta",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "description": "Live captions & real-time translations for Discord voice calls. Ideal for gaming, streaming, and teams with a clean glass overlay and per-user language.",
+    "audience": { "@type": "Audience", "audienceType": "Gamers, Streamers, Teams" },
+    "url": "https://YOURDOMAIN.com/"
+  }
+  </script>
+
+  <!-- Schema.org: FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {
+        "@type":"Question",
+        "name":"How do I use the translator during a Discord call?",
+        "acceptedAnswer":{"@type":"Answer","text":"Join a voice channel, run the app, pick your language, and you’ll see a glass overlay with captions and translations in real time."}
+      },
+      {
+        "@type":"Question",
+        "name":"Is this good for gaming and streams?",
+        "acceptedAnswer":{"@type":"Answer","text":"Yes. The overlay is minimal and readable on top of games, and it looks clean on Twitch/YouTube streams."}
+      },
+      {
+        "@type":"Question",
+        "name":"Can each person choose a different language?",
+        "acceptedAnswer":{"@type":"Answer","text":"Yes. Everyone can set their own target language, so your call stays natural while each viewer reads in their preference."}
+      },
+      {
+        "@type":"Question",
+        "name":"Does this replace earlier draft captions?",
+        "acceptedAnswer":{"@type":"Answer","text":"Yes. Interim captions stream in quickly, then a final polished line replaces them to keep the overlay clean and readable."}
+      }
+    ]
+  }
+  </script>
+  <style>
+    /* Freeze everything inside the preview card */
+    #preview-card, #preview-card * {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    /* Disable animated gradient borders/shimmers if present */
+    #preview-card.card-bling:before { display: none !important; }
+
+    /* Optional: remove hover glow on the card */
+    #preview-card.hover-glow:hover { box-shadow: none !important; border-color: rgba(255,255,255,.12) !important; }
+  </style>
+  <style>
+    /* Keep preview card static and clipped */
+    #preview-card, #preview-card * { animation: none !important; transition: none !important; }
+    #preview-card { overflow: hidden; }
+    #preview-card .rounded-2xl, #preview-card .rounded-3xl { overflow: hidden; }
+
+    /* Guarantee background layers are behind everything */
+    .pointer-events-none.fixed.inset-0 { z-index: -10 !important; }
+    #bg-dust { pointer-events: none; z-index: -10 !important; position: absolute; }
+  </style>
+  <style>
+    #hero-demo .rounded-2xl { aspect-ratio: 16 / 9; }
+    #demo-video { background: radial-gradient(80% 60% at 50% 50%, rgba(94,162,239,.08), rgba(0,0,0,0)); }
+  </style>
+  <style>
+    /* Chip ticker */
+    .ticker-wrap { --speed: 22s; }
+    .ticker-track { animation: ticker var(--speed) linear infinite; }
+    .ticker-wrap:hover .ticker-track { animation-play-state: paused; }
+    @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none !important; } }
+  </style>
+  <style>
+    /* Built-for section spacing */
+    #built-for, .built-for { margin-top: 2rem; }
+
+    /* Built-for row and tiles (scoped) */
+    #built-for .bf-row{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:24px; margin-top:16px; }
+    @media (max-width: 1023px){ #built-for .bf-row{ grid-template-columns: repeat(2, minmax(0,1fr)); gap:20px; } }
+    @media (max-width: 639px){  #built-for .bf-row{ grid-template-columns: 1fr; gap:16px; } }
+
+    /* Also support utility-driven grid */
+    #built-for .bf-grid { display: grid; gap: 1.5rem; }
+    @media (min-width: 768px){ #built-for .bf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+    #built-for .bf-card{
+      position:relative; padding:1.5rem; border-radius:1rem; height:100%; display:flex; flex-direction:column;
+      background: rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.06);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+      transform: translateY(12px); opacity:0;
+    }
+    @media (max-width:639px){ #built-for .bf-card{ padding:20px; } }
+    #built-for .bf-card.is-visible{ transform:none; opacity:1; transition: transform .3s ease, opacity .3s ease, box-shadow .2s ease; }
+    #built-for .bf-card:hover{ transform: translateY(-2px) scale(1.01); box-shadow: 0 8px 30px rgba(124,77,255,.15); }
+    @media (prefers-reduced-motion: reduce){ #built-for .bf-card, #built-for .bf-card:hover{ transform:none; transition:none; } }
+    /* stagger delays */
+    #built-for .bf-row .bf-card:nth-child(2).is-visible{ transition-delay: .09s; }
+    #built-for .bf-row .bf-card:nth-child(3).is-visible{ transition-delay: .18s; }
+
+    /* Icon container and SVGs */
+    #built-for .bf-ico{
+      height:40px; width:40px; border-radius:12px; background: rgba(255,255,255,0.06);
+      display:flex; align-items:center; justify-content:center; margin-bottom:1rem; color: rgba(255,255,255,0.9);
+    }
+    #built-for .bf-ico svg{ width:20px; height:20px; stroke: currentColor; stroke-width:1.75; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+
+    #built-for .bf-title{ font-weight:600; font-size: clamp(18px, 1.1rem, 20px); color:#fff; margin:0 0 8px; }
+    #built-for .bf-copy{ color:rgba(255,255,255,.75); line-height:1.6; margin:0; max-width:48ch; }
+
+    /* reveal-in baseline (scoped) */
+    #built-for .reveal-in{ opacity:0; transform: translateY(12px); }
+    #built-for .reveal-in.is-visible{ opacity:1; transform:none; }
+
+    /* Remove badge row if still present */
+    .bf-badges, .platform-badges { display: none !important; }
+  </style>
+</head>
+<body class="bg-darkbg text-white antialiased">
+  <svg width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="gradient-fill" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#8a2be2"/>
+        <stop offset="100%" stop-color="#4facfe"/>
+      </linearGradient>
+    </defs>
+  </svg>
+  <div id="progress" class="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-[#5EA2EF] to-[#7C4DFF] z-50" style="width:0"></div>
+  <!-- Background glow -->
+  <div class="pointer-events-none fixed inset-0 -z-10">
+    <div class="absolute -top-40 -right-24 w-[70vw] h-[70vw] max-w-[1100px] rounded-full blur-3xl opacity-30 bg-gradient-to-tr from-primary/30 via-white/5 to-indigo-400/20 animate-bgShift parallax -z-10 pointer-events-none" style="animation: aurora 26s ease-in-out infinite"></div>
+    <canvas id="bg-dust" class="absolute inset-0 w-full h-full -z-10 pointer-events-none"></canvas>
+  </div>
+
+  <!-- Header / Nav -->
+  <header id="site-header" class="sticky top-0 z-50">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6">
+      <div class="nav-glass mt-4 flex items-center justify-between rounded-2xl px-3 py-2">
+        <!-- Brand -->
+        <a href="/" class="flex items-center gap-2">
+          <img src="assets/logo.png" alt="Live Call Translator logo" class="h-8 w-auto" />
+          <span class="font-semibold text-white text-lg sm:text-base md:text-lg truncate max-w-[160px] sm:max-w-[220px] md:max-w-none md:whitespace-normal md:overflow-visible md:text-clip">
+            Live Call Translator <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">for Discord</span>
+          </span>
+        </a>
+
+        <!-- Desktop nav -->
+        <nav class="hidden md:flex items-center gap-2">
+          <a href="#how" class="nav-link">How it works</a>
+          <a href="#features" class="nav-link">Features</a>
+          <a href="#faq" class="nav-link">FAQ</a>
+          <a href="#cta" class="btn-cta ripple">Join Waitlist</a>
+        </nav>
+
+        <!-- Mobile toggle -->
+        <button id="nav-toggle" class="md:hidden icon-btn" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open menu">
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile drawer -->
+    <div id="mobile-nav" class="mobile-drawer md:hidden" hidden>
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="nav-glass mt-2 rounded-2xl p-2">
+          <a href="#how" class="mobile-link">How it works</a>
+          <a href="#features" class="mobile-link">Features</a>
+          <a href="#faq" class="mobile-link">FAQ</a>
+          <a href="#cta" class="mobile-cta ripple">Join Waitlist</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-7xl mx-auto px-6 py-14">
+    <div class="grid lg:grid-cols-2 gap-10 items-center">
+      <div id="hero-left" class="relative">
+        <div class="relative">
+          <div class="absolute -z-10 -left-6 -right-6 top-6 h-20 blur-3xl opacity-30 pointer-events-none" style="background: radial-gradient(60% 40% at 30% 50%, rgba(94,162,239,.35), rgba(124,77,255,.25), transparent 70%);"></div>
+          <h1 class="text-4xl md:text-6xl font-extrabold leading-tight">
+            Instant translations for your <span class="headline-shimmer">Discord calls</span>
+          </h1>
+        </div>
+        <p class="mt-6 text-lg opacity-90">
+          Understand every word in real time. Add captions and translations in a clean glass overlay — perfect for gaming, streaming, and team calls.
+        </p>
+        <div class="mt-3 md:mt-4 mb-2 md:mb-3 select-none" aria-hidden="true">
+          <svg id="wave" viewBox="0 0 1200 100" class="w-full max-w-2xl">
+            <!-- subtle glow -->
+            <defs>
+              <linearGradient id="wg1" x1="0" x2="1">
+                <stop offset="0%" stop-color="#5EA2EF"/><stop offset="100%" stop-color="#7C4DFF"/>
+              </linearGradient>
+              <linearGradient id="wg2" x1="0" x2="1">
+                <stop offset="0%" stop-color="#9aa9ff"/><stop offset="100%" stop-color="#B388FF"/>
+              </linearGradient>
+              <filter id="wgGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3" result="b1"/>
+                <feMerge>
+                  <feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+
+            <!-- three layers: back (fat), mid, front (sharp) -->
+            <path id="wBack" d="" fill="none" stroke="url(#wg2)" stroke-opacity=".25" stroke-width="6" filter="url(#wgGlow)"/>
+            <path id="wMid"  d="" fill="none" stroke="url(#wg1)" stroke-opacity=".55" stroke-width="3"/>
+            <path id="wFront" d="" fill="none" stroke="url(#wg1)" stroke-opacity=".9"  stroke-width="2"/>
+          </svg>
+        </div>
+        <form name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/success.html" id="form-hero" class="mt-8 flex gap-3">
+          <input type="hidden" name="form-name" value="waitlist" />
+          <input type="hidden" name="source" value="landing-v1" />
+          <p class="hidden">
+            <label>Don’t fill this out if you’re human: <input name="bot-field" /></label>
+          </p>
+
+          <input required name="email" type="email" placeholder="you@example.com" class="w-full md:w-2/3 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/60" />
+          <button class="px-5 py-3 rounded-xl bg-primary text-black font-semibold hover:opacity-90 cta-ring ripple" style="background-image:linear-gradient(90deg, rgba(255,255,255,.15), rgba(255,255,255,.35), rgba(255,255,255,.15)); background-size:220% 100%;">Join Waitlist</button>
+        </form>
+        <!-- Social proof (inline, no shapes) -->
+        <div id="social-proof" class="sp-row reveal">
+          <div class="sp-avatars" id="sp-avatars"></div>
+          <span class="sp-text">Gamers &amp; creators are joining the waitlist now.</span>
+        </div>
+        <p class="mt-3 text-xs opacity-70">Join the beta. No spam.</p>
+        <div class="chips-band mt-3 hero-chip-row">
+          <div class="chips-track" id="chips-track">
+            <span class="chip">Live Discord captions</span>
+            <span class="chip">Real-time translation</span>
+            <span class="chip">Glass overlay</span>
+            <span class="chip">Per-user language</span>
+          </div>
+        </div>
+        <div class="hero-mini-row">
+          <span class="hero-mini">Understand every speaker</span>
+          <span class="hero-mini">Keep your screen clean</span>
+          <span class="hero-mini">Stream-friendly overlay</span>
+        </div>
+        
+      </div>
+
+      <!-- Product demo video -->
+      <div class="demo-video-wrapper rounded-2xl overflow-hidden shadow-lg ring-1 ring-white/10 opacity-0 translate-y-4 animate-demoIntro">
+        <video
+          class="w-full h-full object-cover"
+          autoplay
+          muted
+          loop
+          playsinline
+          disablepictureinpicture
+          controlslist="nodownload nofullscreen noremoteplayback"
+          preload="auto"
+        >
+          <!-- Prefer WebM first if you later add it; MP4 fallback is already present -->
+          <!-- <source src="assets/demo.webm" type="video/webm"> -->
+          <source src="assets/demo.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <section id="built-for" class="mt-8 lg:mt-12">
+    <div class="mx-auto max-w-6xl px-6">
+      
+
+      <h2 class="sr-only">Built for gamers, creators, and teams</h2>
+
+      <div class="bf-row bf-grid grid gap-6 md:grid-cols-3">
+        <!-- Gamers -->
+        <article class="bf-card reveal-in">
+          <span class="bf-ico" aria-hidden="true">
+            <!-- Gamers icon: minimal gamepad -->
+            <svg viewBox="0 0 24 24" class="h-5 w-5 text-white/90">
+              <path d="M7 10h10M8.5 13.5h1m5 0h1M5.5 9.5a4.5 4.5 0 0 0-3.5 7.5c.7.9 1.7 1.5 2.8 1.5h14.4c1.1 0 2.1-.6 2.8-1.5A4.5 4.5 0 0 0 18.5 9.5c-.9 0-1.8.3-2.5.8h-8c-.7-.5-1.6-.8-2.5-.8Z"/>
+              <path d="M9 12.5v2m-1-1h2"/>
+            </svg>
+          </span>
+          <h3 class="bf-title">Gamers</h3>
+          <p class="bf-copy">Fast callouts you can read mid-fight. Low-distraction overlay that stays readable on any game.</p>
+        </article>
+
+        <!-- Creators -->
+        <article class="bf-card reveal-in">
+          <span class="bf-ico" aria-hidden="true">
+            <!-- Creators icon: camera -->
+            <svg viewBox="0 0 24 24" class="h-5 w-5 text-white/90">
+              <rect x="3.5" y="7.5" rx="3.5" ry="3.5" width="12" height="9"/>
+              <path d="M15.5 10.5 20 8v8l-4.5-2.5z"/>
+            </svg>
+          </span>
+          <h3 class="bf-title">Creators</h3>
+          <p class="bf-copy">Stream-ready captions + translations that look great on Twitch &amp; YouTube — works with fullscreen.</p>
+        </article>
+
+        <!-- Teams -->
+        <article class="bf-card reveal-in">
+          <span class="bf-ico" aria-hidden="true">
+            <!-- Teams icon: two users -->
+            <svg viewBox="0 0 24 24" class="h-5 w-5 text-white/90">
+              <circle cx="9" cy="8" r="3.25"/>
+              <circle cx="16.5" cy="9.5" r="2.5"/>
+              <path d="M3.5 18.5a5.5 5.5 0 0 1 11 0"/>
+              <path d="M12.5 18.5a4.5 4.5 0 0 1 7.5 0"/>
+            </svg>
+          </span>
+          <h3 class="bf-title">Teams</h3>
+          <p class="bf-copy">Real-time translation keeps mixed-language squads in sync. Everyone reads in their own language.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how" class="max-w-7xl mx-auto px-6 py-16 reveal">
+    <header class="flex items-end justify-between gap-4 mb-8">
+      <h2 class="text-2xl md:text-3xl font-bold tracking-tight">How it works</h2>
+      <p class="text-sm opacity-70 hidden md:block">Three simple steps. No changes to how you use Discord.</p>
+    </header>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <!-- Step 1 -->
+      <article class="glass rounded-2xl p-6 hover-glow reveal card-bling will-change-transform transition-transform hover:-translate-y-0.5 tilt">
+        <div class="tilt-inner">
+          <div class="w-10 h-10 rounded-xl bg-white/10 grid place-items-center text-white/90 font-semibold ring-1 ring-white/10">1</div>
+          <h3 class="mt-4 font-semibold text-lg">Join a call</h3>
+          <p class="opacity-80 mt-1">Join any Discord voice channel.</p>
+        </div>
+      </article>
+
+      <!-- Step 2 -->
+      <article class="glass rounded-2xl p-6 hover-glow reveal card-bling will-change-transform transition-transform hover:-translate-y-0.5 tilt">
+        <div class="tilt-inner">
+          <div class="w-10 h-10 rounded-xl bg-white/10 grid place-items-center text-white/90 font-semibold ring-1 ring-white/10">2</div>
+          <h3 class="mt-4 font-semibold text-lg">Pick your language</h3>
+          <p class="opacity-80 mt-1">Pick your reading language — your teammates can pick theirs.</p>
+        </div>
+      </article>
+
+      <!-- Step 3 -->
+      <article class="glass rounded-2xl p-6 hover-glow reveal card-bling will-change-transform transition-transform hover:-translate-y-0.5 tilt">
+        <div class="tilt-inner">
+          <div class="w-10 h-10 rounded-xl bg-white/10 grid place-items-center text-white/90 font-semibold ring-1 ring-white/10">3</div>
+          <h3 class="mt-4 font-semibold text-lg">Watch captions appear</h3>
+          <p class="opacity-80 mt-1">Captions and translations appear live in a clean overlay.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Features (redesigned) -->
+  <section id="features" class="relative py-16 md:py-20">
+    <div class="max-w-7xl mx-auto px-6">
+
+      <!-- Section header -->
+      <header class="mb-8 md:mb-12 reveal">
+        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight">
+          Why people use it
+        </h2>
+        <p class="mt-2 max-w-2xl text-base opacity-80">
+          Add <strong>live Discord captions</strong> and <strong>real-time translation</strong> without changing how you call.
+          Clean, readable, and stream-ready—built for <strong>gamers</strong>, <strong>creators</strong>, and <strong>remote teams</strong>.
+        </p>
+      </header>
+
+      <!-- Animated band of benefit tags (different from hero chips) -->
+      <div class="benefit-band reveal">
+        <div class="benefit-track" id="benefit-track">
+          <span class="benefit">Understand every speaker</span>
+          <span class="benefit">Instant translation</span>
+          <span class="benefit">Per-user language</span>
+          <span class="benefit">Stream overlay</span>
+          <span class="benefit">Game overlay mode</span>
+          <span class="benefit">Easy setup</span>
+        </div>
+      </div>
+
+      <!-- Feature grid (unique visual: magnetic glow + gradient rings) -->
+      <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <!-- 1 Understand everyone -->
+        <article class="feature-card reveal" data-i="0">
+          <div class="feature-ring"></div>
+          <div class="feature-content">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12l4 4 12-12" stroke="url(#fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3 class="feature-title">Understand everyone</h3>
+            <p class="feature-text">Readable captions for every voice in the channel.</p>
+          </div>
+        </article>
+
+        <!-- 2 Instant translation -->
+        <article class="feature-card reveal" data-i="1">
+          <div class="feature-ring"></div>
+          <div class="feature-content">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7" stroke="url(#fg)" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <h3 class="feature-title">Instant translation</h3>
+            <p class="feature-text">See translations in seconds—keep the call moving.</p>
+          </div>
+        </article>
+
+        <!-- 3 Your language -->
+        <article class="feature-card reveal" data-i="2">
+          <div class="feature-ring"></div>
+          <div class="feature-content">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M3 12h18" stroke="url(#fg)" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <h3 class="feature-title">Per-user language</h3>
+            <p class="feature-text">Each person chooses how they read—no flow changes.</p>
+          </div>
+        </article>
+
+        <!-- 4 Stream overlay -->
+        <article class="feature-card reveal" data-i="3">
+          <div class="feature-ring"></div>
+          <div class="feature-content">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3" stroke="url(#fg)" stroke-width="2"/><path d="M8 10h8M8 14h5" stroke="url(#fg)" stroke-width="2" stroke-linecap="round"/></svg>
+            </div>
+            <h3 class="feature-title">Stream overlay</h3>
+            <p class="feature-text">Glass style stays readable on dark or bright games.</p>
+          </div>
+        </article>
+
+        <!-- 5 Game overlay mode -->
+        <article class="feature-card reveal" data-i="4">
+          <div class="feature-ring"></div>
+          <div class="feature-content">
+            <!-- Gamepad icon — inline so we can style the stroke/fill -->
+            <svg class="feature-icon" viewBox="0 0 48 32" aria-hidden="true" focusable="false">
+              <!-- Gamepad body (rounded, with clear silhouette) -->
+              <path
+                d="M4 16
+                   c0-6 4.9-11 11-11h18
+                   c6.1 0 11 5 11 11v3
+                   c0 3.3-2.7 6-6 6
+                   c-2.6 0-4.9-1.5-5.8-3.9H15.8
+                   C15 23.5 12.6 25 10 25
+                   c-3.3 0-6-2.7-6-6v-3z"
+                fill="none"
+                stroke="url(#accentGradient)"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <!-- D-pad (left) -->
+              <path
+                d="M13.5 17h5M16 14.5v5"
+                fill="none"
+                stroke="url(#accentGradient)"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              />
+              <!-- Action buttons (right) -->
+              <circle cx="33.5" cy="16.5" r="2.2" fill="url(#accentGradient)"/>
+              <circle cx="37.5" cy="13.2" r="2.0" fill="url(#accentGradient)"/>
+            </svg>
+            <h3 class="feature-title">Game overlay mode</h3>
+            <p class="feature-text">Optimized sizing so captions stay out of the action.</p>
+          </div>
+        </article>
+
+        <!-- 6 Easy setup -->
+        <article class="feature-card reveal easy-setup" data-i="5">
+          <div class="feature-ring"></div>
+          <div class="feature-content">
+            <!-- New icon: bot + plug (gradient stroke) -->
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <!-- Bot head -->
+                <rect x="4" y="7" width="16" height="10" rx="3" stroke="url(#fg)" stroke-width="2"/>
+                <circle cx="9" cy="12" r="1.5" fill="url(#fg)"/>
+                <circle cx="15" cy="12" r="1.5" fill="url(#fg)"/>
+                <!-- Simple plug/check -->
+                <path d="M12 3v3M9 20h6" stroke="url(#fg)" stroke-width="2" stroke-linecap="round"/>
+                <path d="M7 18l2 2 4-4" stroke="url(#fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3 class="feature-title">Easy setup</h3>
+            <p class="feature-text">
+              Add the provided bot to your Discord call—captions and translations start instantly.
+              No complex configuration required.
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <!-- gradient used by icons -->
+      <svg width="0" height="0" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="fg" x1="0" y1="0" x2="1" y2="0">
+            <stop stop-color="#5EA2EF"/><stop offset="1" stop-color="#7C4DFF"/>
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <!-- SEO helper line -->
+      <p class="sr-only">Live Discord captions, real-time translation, per-user language, stream overlay, game overlay mode, and easy setup via a provided Discord bot.</p>
+    </div>
+  </section>
+
+  <hr class="max-w-7xl mx-auto border-white/10 my-8">
+  <!-- SEO text block -->
+  <section class="max-w-4xl mx-auto px-6 py-6 reveal">
+    <p class="opacity-90 leading-7">
+      Use Live Call Translator for Discord to add <strong>live Discord captions</strong> and <strong>real-time translation</strong> to any voice channel — great for <strong>gaming</strong>, <strong>streaming</strong>, and team meetings. The <strong>glass overlay</strong> keeps callouts readable without covering gameplay, and each player can set a <strong>target language</strong> so cross-region squads understand every call.
+    </p>
+  </section>
+
+  <section id="faq" class="relative py-16 md:py-20">
+    <div class="max-w-3xl mx-auto px-6">
+      <header class="mb-8 md:mb-12 reveal">
+        <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight">FAQ</h2>
+      </header>
+
+      <div id="faq-list" class="space-y-3">
+        <!-- Item -->
+        <details class="faq glass reveal">
+          <summary>
+            <span>How fast are captions?</span>
+            <span class="chev" aria-hidden="true"></span>
+          </summary>
+          <div class="answer">
+            Captions appear in seconds, and final lines replace drafts automatically so the overlay stays tidy.
+          </div>
+        </details>
+
+        <details class="faq glass reveal">
+          <summary>
+            <span>Is this good for gaming and streams?</span>
+            <span class="chev" aria-hidden="true"></span>
+          </summary>
+          <div class="answer">
+            The glass overlay is tuned to stay readable on dark or bright scenes—great for streams and creators.
+          </div>
+        </details>
+
+        <details class="faq glass reveal">
+          <summary>
+            <span>Does it work on streams?</span>
+            <span class="chev" aria-hidden="true"></span>
+          </summary>
+          <div class="answer">
+            Yes—add the overlay window to your scene. It stays minimal and won’t cover gameplay.
+          </div>
+        </details>
+
+        <details class="faq glass reveal">
+          <summary>
+            <span>Can I choose my language?</span>
+            <span class="chev" aria-hidden="true"></span>
+          </summary>
+          <div class="answer">
+            Each person picks a reading language—no changes to how you join or run the call.
+          </div>
+        </details>
+
+        <details class="faq glass reveal">
+          <summary>
+            <span>How hard is setup?</span>
+            <span class="chev" aria-hidden="true"></span>
+          </summary>
+          <div class="answer">
+            Add the provided bot to your Discord call—captions and translations start instantly. No complex configuration required.
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta" class="max-w-4xl mx-auto px-6 pb-20 reveal">
+    <div class="glass rounded-3xl p-8 ring-aurora hover-glow tilt">
+      <h3 class="text-2xl md:text-3xl font-extrabold">Get early access</h3>
+      <p class="opacity-80 mt-2">Join the waitlist to be first to try Live Call Translator for Discord.</p>
+      <form name="waitlist" method="POST" data-netlify="true" netlify-honeypot="bot-field" action="/success.html" id="form-bottom" class="mt-6 flex flex-col sm:flex-row gap-3">
+        <input type="hidden" name="form-name" value="waitlist" />
+        <input type="hidden" name="source" value="landing-v1-bottom" />
+        <p class="hidden">
+          <label>Don’t fill this out if you’re human: <input name="bot-field" /></label>
+        </p>
+
+        <input required name="email" type="email" placeholder="you@example.com" class="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/60" />
+        <button class="px-5 py-3 rounded-xl bg-primary text-black font-semibold hover:opacity-90 cta-ring ripple" style="background-image:linear-gradient(90deg, rgba(255,255,255,.15), rgba(255,255,255,.35), rgba(255,255,255,.15)); background-size:220% 100%;">Join Waitlist</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/10">
+    <div class="max-w-7xl mx-auto px-6 py-10 text-sm opacity-80 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+      <p>© <span id="year"></span> Live Call Translator for Discord</p>
+      <nav class="flex gap-5">
+        <a href="/privacy.html" class="hover:opacity-100 opacity-80">Privacy</a>
+        <a href="/terms.html" class="hover:opacity-100 opacity-80">Terms</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- Tiny helper -->
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script>
+    // IntersectionObserver to reveal elements on scroll
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+    /*
+    // Pulse glow on first video play (disabled for static preview)
+    const v = document.getElementById('demo-video');
+    if (v) {
+      const parent = v.closest('.glass');
+      const pulse = () => {
+        if (!parent) return;
+        parent.style.animation = 'glowPulse 2.6s ease-in-out 1';
+        setTimeout(() => parent.style.animation = '', 2600);
+      };
+      v.addEventListener('play', pulse, { once: true });
+    }
+    */
+  </script>
+  <script>
+    // ===== Scroll progress
+    const bar = document.getElementById('progress');
+    const setBar = () => {
+      const h = document.documentElement;
+      const scrolled = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+      if (bar) bar.style.width = scrolled + '%';
+    };
+    document.addEventListener('scroll', setBar, { passive: true }); setBar();
+
+    // ===== Intersection reveal (stagger)
+    const io2 = new IntersectionObserver((ents)=>{
+      ents.forEach((e,i)=>{
+        if(e.isIntersecting){
+          e.target.style.animationDelay = (i*60)+'ms';
+          e.target.classList.add('in');
+          io2.unobserve(e.target);
+        }
+      });
+    },{ threshold:0.12 });
+    document.querySelectorAll('.reveal').forEach(el=>io2.observe(el));
+
+    // ===== Parallax tilt on cards
+    const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+    document.querySelectorAll('.card-bling').forEach(card=>{
+      card.addEventListener('mousemove',(ev)=>{
+        const r = card.getBoundingClientRect();
+        const x = (ev.clientX - r.left)/r.width, y = (ev.clientY - r.top)/r.height;
+        const rx = clamp((.5 - y)*8,-8,8), ry = clamp((x - .5)*10,-10,10);
+        const inner = card.querySelector('.tilt-inner') || card;
+        inner.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
+      });
+      card.addEventListener('mouseleave',()=>{
+        const inner = card.querySelector('.tilt-inner') || card;
+        inner.style.transform = 'perspective(900px) rotateX(0) rotateY(0) translateZ(0)';
+      });
+    });
+
+    // ===== CTA ripple effect
+    document.querySelectorAll('.ripple').forEach(btn=>{
+      btn.addEventListener('click',(e)=>{
+        const r = btn.getBoundingClientRect();
+        const ripple = btn;
+        ripple.style.setProperty('--rx', (e.clientX - r.left)+'px');
+        ripple.style.setProperty('--ry', (e.clientY - r.top)+'px');
+        ripple.style.setProperty('--rSize', Math.max(r.width, r.height)*1.2+'px');
+        // emulate ripple via :after
+        ripple.style.setProperty('--ripX', (e.clientX - r.left)+'px');
+        ripple.style.setProperty('--ripY', (e.clientY - r.top)+'px');
+        ripple.classList.add('rippling');
+        setTimeout(()=>ripple.classList.remove('rippling'), 500);
+      });
+    });
+
+    // ===== Background particles (ultra-light)
+    const canvas = document.getElementById('bg-dust');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      let w, h, dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dots = Array.from({length: 60}).map(()=>({x:Math.random(), y:Math.random(), s:Math.random()*1.5+0.4, v:(Math.random()*0.2+0.05)}));
+      const resize = ()=>{ w = canvas.width = canvas.clientWidth * dpr; h = canvas.height = canvas.clientHeight * dpr; };
+      const step = ()=>{
+        ctx.clearRect(0,0,w,h);
+        dots.forEach(p=>{
+          p.x += (p.v-0.12)/160; p.y -= (p.v-0.08)/200;
+          if (p.x>1) p.x=0; if (p.y<0) p.y=1;
+          const x = p.x*w, y = p.y*h;
+          ctx.fillStyle = 'rgba(255,255,255,'+(0.08 + p.s*0.06)+')';
+          ctx.beginPath(); ctx.arc(x, y, p.s*dpr, 0, 2*Math.PI); ctx.fill();
+        });
+        requestAnimationFrame(step);
+      };
+      resize(); window.addEventListener('resize', resize); step();
+    }
+
+    // ===== Reduced motion support
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      if (bar) bar.style.transition = 'none';
+    }
+  </script>
+  <script>
+    // Spotlight disabled
+
+    // ===== Stage hero elements (headline, subhead, form, preview)
+    document.querySelectorAll('[data-enter]').forEach((el,i)=>{
+      el.classList.add('enter');
+      setTimeout(()=>el.classList.add('in'), 120 + i*90);
+    });
+
+    // ===== Ticker: duplicate content so it loops seamlessly
+    document.querySelectorAll('.ticker').forEach(t=>{ t.innerHTML = t.innerHTML + t.innerHTML; });
+  </script>
+  <!--
+  <script>
+(function(){
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stage = document.getElementById('captions-scroll');
+  if (!stage) return;
+
+  // Minimal demo script. Left lane = speakers; Right lane = translated line
+  const speakers = { Zay:{color:'#5EA2EF'}, Mina:{color:'#7C4DFF'}, Brian:{color:'#FFA8A8'}, EN:{color:'#BCE784'} };
+  const queue = [
+    {who:'Zay',   text:'enemy left — push now!', side:'left'},
+    {who:'EN',    text:'enemy left — push now!', side:'right'},
+    {who:'Mina',  text:'ナイス！右をカバーして！', side:'left'},
+    {who:'EN',    text:'nice! cover right!', side:'right'},
+    {who:'Brian', text:'ult ready — go!', side:'left'},
+    {who:'EN',    text:'ultimate ready — go!', side:'right'}
+  ];
+
+  function bubble(item){
+    const s = speakers[item.who] || {color:'#9aa9ff'};
+    const el = document.createElement('div');
+    el.className = 'caption cap-enter ' + (item.side === 'right' ? 'right' : '');
+    el.innerHTML = `
+      <div class="meta"><span class="dot" style="background:${s.color}"></span><strong>${item.who}</strong></div>
+      <div class="line"></div>`;
+    const line = el.querySelector('.line');
+
+    if (reduce) { line.textContent = item.text; return el; }
+
+    // simple type-in (clamped)
+    let i = 0; const txt = item.text;
+    (function type(){ line.textContent = txt.slice(0, ++i); if (i < txt.length) requestAnimationFrame(type); })();
+
+    return el;
+  }
+
+  function run(){
+    let idx = 0;
+    function next(){
+      const item = queue[idx++ % queue.length];
+      const el = bubble(item);
+      stage.appendChild(el);
+      // keep last 4 bubbles max (2 left, 2 right typical)
+      const nodes = stage.querySelectorAll('.caption');
+      if (nodes.length > 4) {
+        nodes[0].classList.remove('cap-enter');
+        nodes[0].classList.add('cap-exit');
+        setTimeout(() => nodes[0]?.remove(), 240);
+      }
+      setTimeout(next, reduce ? 1300 : 1700);
+    }
+    next();
+  }
+  run();
+})();
+  </script>
+  -->
+  <!--
+  <script>
+  (function(){
+    const p = document.getElementById('wavePath');
+    if (!p || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let t = 0;
+    function frame(){
+      t += 0.02; const A = 8, S = 40; let d = "M0,30";
+      for (let i=0;i<=600;i+=S){
+        const y = 30 + Math.sin((i/60)+t)*A;
+        const y2 = 30 + Math.cos((i/60)+t)*A*0.6;
+        d += ` C ${i+S/2},${y2} ${i+S/2},${y2} ${i+S},${y}`;
+      }
+      p.setAttribute('d', d);
+      requestAnimationFrame(frame);
+    }
+    frame();
+  })();
+  </script>
+  -->
+<script>
+(() => {
+  const svg = document.getElementById('wave');
+  if (!svg) return;
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const back  = document.getElementById('wBack');
+  const midL  = document.getElementById('wMid');
+  const front = document.getElementById('wFront');
+
+  const W = 1200, mid = 60, seg = 24, pts = Math.ceil(W/seg);
+
+  // Base amplitudes (target) and current smoothed amplitudes
+  const base = { A1:10, A2:7, A3:4, S1:0.8, S2:1.1, S3:1.6, P1:0, P2:Math.PI/3, P3:Math.PI*0.66 };
+  const cur  = { A1:base.A1, A2:base.A2, A3:base.A3 };
+  const target = { A1:base.A1, A2:base.A2, A3:base.A3 };
+
+  // Hover smoothly increases target amplitude
+  svg.addEventListener('mouseenter', () => {
+    target.A1 = base.A1 * 1.45; target.A2 = base.A2 * 1.45; target.A3 = base.A3 * 1.45;
+  });
+  svg.addEventListener('mouseleave', () => {
+    target.A1 = base.A1; target.A2 = base.A2; target.A3 = base.A3;
+  });
+
+  // Mouse X changes tempo slightly — eased
+  let tempoTarget = 1, tempo = 1;
+  svg.addEventListener('mousemove', (e) => {
+    const r = svg.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width;   // 0..1
+    tempoTarget = 0.9 + x * 0.5;                // 0.9..1.4
+  }, { passive:true });
+
+  // Optional: small click pulse; damped smoothly
+  let pulse = 0, pulseTarget = 0;
+  svg.addEventListener('click', () => { pulseTarget = 1; });
+
+  const ease = (from, to, factor) => from + (to - from) * factor;
+
+  function pathFor(A, speed, phase, t) {
+    let d = `M0,${mid}`;
+    for (let i = 0; i <= pts; i++) {
+      const x = i * seg;
+      const y = mid
+        + Math.sin(i*0.9 + t*speed + phase) * A
+        + Math.sin(i*0.7 + t*2.0) * 0.6; // light texture
+      const cx = x + seg/2;
+      const cy = mid + Math.cos(i*0.9 + t*speed + phase) * A * 0.5;
+      d += ` C ${cx},${cy} ${cx},${cy} ${x+seg},${y}`;
+    }
+    return d;
+  }
+
+  function frame(now) {
+    if (reduce) return; // static if reduced motion
+
+    // Ease current amps/tempo toward targets
+    cur.A1 = ease(cur.A1, target.A1 + pulse*6, 0.08);
+    cur.A2 = ease(cur.A2, target.A2 + pulse*4, 0.08);
+    cur.A3 = ease(cur.A3, target.A3 + pulse*2, 0.08);
+    tempo   = ease(tempo, tempoTarget, 0.06);
+    pulse   = ease(pulse, pulseTarget, 0.10);
+    pulseTarget = ease(pulseTarget, 0, 0.08);
+
+    const t = (now/1000);
+    back.setAttribute('d',  pathFor(cur.A1, base.S1*tempo, base.P1, t));
+    midL.setAttribute('d',  pathFor(cur.A2, base.S2*tempo, base.P2, t));
+    front.setAttribute('d', pathFor(cur.A3, base.S3*tempo, base.P3, t));
+    requestAnimationFrame(frame);
+  }
+  if (!reduce) requestAnimationFrame(frame);
+})();
+</script>
+<script>
+  const reveal = (entries)=>entries.forEach(e=>{
+    if(e.isIntersecting){ e.target.classList.add('opacity-100','translate-y-0'); }
+  });
+  const io = new IntersectionObserver(reveal, {threshold: 0.12});
+  document.querySelectorAll('[data-animate]').forEach(el=>{
+    el.classList.add('opacity-0','translate-y-2','transition-all','duration-700');
+    io.observe(el);
+  });
+</script>
+<script>
+  (function(){
+    const sec = document.querySelector('#benefits-top');
+    if(!sec || 'IntersectionObserver' in window === false) return;
+    const io = new IntersectionObserver((entries, obs) => {
+      entries.forEach(e => {
+        if(e.isIntersecting){
+          sec.classList.add('is-visible');
+          obs.disconnect();
+        }
+      });
+    }, {rootMargin: '0px 0px -20% 0px'});
+    io.observe(sec);
+  })();
+</script>
+<script>
+(() => {
+  const faqs = document.querySelectorAll('#faq details.reveal');
+  // Stagger timing for reveal
+  faqs.forEach((el, i)=> el.style.setProperty('--d', `${i*60}ms`));
+
+  // Magnetic glow: update CSS vars on pointer move
+  const move = function(e){
+    const r = this.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * 100;
+    const y = (e.clientY - r.top) / r.height * 100;
+    this.style.setProperty('--mx', x + '%');
+    this.style.setProperty('--my', y + '%');
+  };
+  const leave = function(){ this.style.removeProperty('--mx'); this.style.removeProperty('--my'); };
+  faqs.forEach(f => { f.addEventListener('mousemove', move, {passive:true}); f.addEventListener('mouseleave', leave); });
+
+  // Optional: close others when one opens (cleaner UX)
+  document.getElementById('faq-list')?.addEventListener('toggle', (e)=>{
+    if (e.target.tagName !== 'DETAILS' || !e.target.open) return;
+    document.querySelectorAll('#faq details[open]').forEach(d => { if (d !== e.target) d.open = false; });
+  });
+})();
+</script>
+<script>
+(() => {
+  // ----- Duplicate benefit band for seamless loop
+  const bt = document.getElementById('benefit-track');
+  if (bt && !bt.dataset.duped){ bt.innerHTML = bt.innerHTML + bt.innerHTML; bt.dataset.duped = '1'; }
+
+  // ----- Stagger reveal timing for feature cards
+  document.querySelectorAll('#features .feature-card').forEach((el, i)=>{
+    el.style.setProperty('--d', i.toString());
+  });
+
+  // ----- Magnetic cursor effect (very light)
+  const cards = document.querySelectorAll('.feature-card');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function onMove(e){
+    const r = this.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * 100;
+    const y = (e.clientY - r.top) / r.height * 100;
+    this.style.setProperty('--mx', x + '%');
+    this.style.setProperty('--my', y + '%');
+    if (!reduce){
+      const rx = ((e.clientY - (r.top + r.height/2)) / r.height) * 2;
+      const ry = ((e.clientX - (r.left + r.width/2)) / r.width) * -2;
+      this.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+      this.style.boxShadow = `0 10px 30px rgba(0,0,0,.35)`;
+    }
+  }
+  function onLeave(){
+    this.style.removeProperty('--mx'); this.style.removeProperty('--my');
+    this.style.transform = ''; this.style.boxShadow = '';
+  }
+  cards.forEach(c=>{
+    c.addEventListener('mousemove', onMove, {passive:true});
+    c.addEventListener('mouseleave', onLeave);
+  });
+})();
+</script>
+<script>
+(() => {
+  // ----- Chips ticker: duplicate once for seamless loop
+  const track = document.getElementById('chips-track');
+  if (track && !track.dataset.duped){ track.innerHTML += track.innerHTML; track.dataset.duped = '1'; }
+
+  // ----- Scroll reveal
+  const io = new IntersectionObserver((ents)=>{
+    ents.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // ----- Ripple
+  document.querySelectorAll('.ripple').forEach(btn=>{
+    btn.addEventListener('click',(ev)=>{
+      const r = btn.getBoundingClientRect();
+      const x = ev.clientX - r.left, y = ev.clientY - r.top;
+      btn.style.setProperty('--rx', x+'px'); btn.style.setProperty('--ry', y+'px');
+      const d = Math.max(r.width, r.height)*1.2; btn.style.setProperty('--rs', d+'px');
+      btn.classList.add('is-rippling'); setTimeout(()=>btn.classList.remove('is-rippling'), 500);
+    });
+  });
+
+  // ----- Parallax on scroll for elements with .parallax
+  const parallaxEls = document.querySelectorAll('.parallax');
+  const onScroll = () => {
+    const y = window.scrollY || 0; const strength = 0.03;
+    parallaxEls.forEach(el=>{ el.style.transform = `translateY(${y * strength}px)`; });
+  };
+  onScroll(); window.addEventListener('scroll', onScroll, {passive:true});
+})();
+</script>
+<script>
+(() => {
+  // Scroll state → stronger glass + shadow
+  const header = document.getElementById('site-header');
+  const onScroll = () => {
+    const y = window.scrollY || 0;
+    header.classList.toggle('is-scrolled', y > 6);
+  };
+  onScroll(); window.addEventListener('scroll', onScroll, {passive:true});
+
+  // Active link highlight based on section in view
+  const sections = [
+    ['#how','How it works'],
+    ['#features','Features'],
+    ['#faq','FAQ'],
+    ['#cta','Join Waitlist']
+  ].map(([id]) => document.querySelector(id)).filter(Boolean);
+
+  const links = [...document.querySelectorAll('nav .nav-link')];
+  const setActive = (id) => {
+    links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === id));
+  };
+  const io = new IntersectionObserver((ents)=>{
+    ents.forEach(e => { if (e.isIntersecting) setActive('#'+e.target.id); });
+  }, { rootMargin: '-45% 0px -50% 0px', threshold: 0.01 });
+  sections.forEach(s => io.observe(s));
+
+  // Mobile toggle
+  const btn = document.getElementById('nav-toggle');
+  const drawer = document.getElementById('mobile-nav');
+  if (btn && drawer){
+    btn.addEventListener('click', ()=>{
+      const open = drawer.hasAttribute('hidden') ? false : true;
+      if (open){ drawer.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false'); }
+      else { drawer.removeAttribute('hidden'); btn.setAttribute('aria-expanded','true'); }
+    });
+    drawer.addEventListener('click', (e)=>{
+      if (e.target.matches('a')){ drawer.setAttribute('hidden',''); btn.setAttribute('aria-expanded','false'); }
+    });
+  }
+})();
+</script>
+<script>
+(() => {
+  const minis = document.querySelectorAll('#mini-benefits .mini-benefit');
+  // Stagger order
+  minis.forEach((el,i)=> el.style.setProperty('--d', i.toString()));
+
+  // Magnetic glow coordinates (matches site pattern)
+  const move = function(e){
+    const r = this.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * 100;
+    const y = (e.clientY - r.top) / r.height * 100;
+    this.style.setProperty('--mx', x + '%');
+    this.style.setProperty('--my', y + '%');
+  };
+  const leave = function(){ this.style.removeProperty('--mx'); this.style.removeProperty('--my'); };
+  minis.forEach(c=>{ c.addEventListener('mousemove', move, {passive:true}); c.addEventListener('mouseleave', leave); });
+})();
+</script>
+<script>
+(() => {
+  const sp = document.getElementById('social-proof');
+  if (sp) requestAnimationFrame(() => sp.classList.add('in'));
+})();
+</script>
+<script>
+(() => {
+  const wrap = document.getElementById('sp-avatars');
+  if (!wrap) return;
+
+  // Inline SVG avatar (zero-dep fallback)
+  function svgFallback() {
+    const palettes = [
+      ['#5EA2EF','#7C4DFF'],
+      ['#A78BFA','#67E8F9'],
+      ['#67E8F9','#8B5CF6'],
+      ['#22d3ee','#6366f1']
+    ];
+    const [c1,c2] = palettes[Math.floor(Math.random()*palettes.length)];
+    const svg = `
+<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'>
+  <defs><linearGradient id='g' x1='0' y='0' x2='1' y2='1'>
+    <stop stop-color='${c1}'/><stop offset='1' stop-color='${c2}'/>
+  </linearGradient></defs>
+  <rect width='96' height='96' rx='48' fill='url(#g)'/>
+  <circle cx='48' cy='40' r='18' fill='rgba(255,255,255,.85)'/>
+  <path d='M16 84c4-16 20-24 32-24s28 8 32 24' fill='rgba(255,255,255,.6)'/>
+</svg>`;
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg.trim());
+  }
+
+  function addAvatar(src, alt='Recent user') {
+    const img = new Image();
+    img.width = 26; img.height = 26;
+    img.decoding = 'async'; img.loading = 'lazy';
+    img.alt = alt;
+    img.src = src;
+    img.onerror = () => { img.src = svgFallback(); };
+    wrap.appendChild(img);
+  }
+
+  // Respect reduced data / offline – show SVGs only
+  const reduced = window.matchMedia('(prefers-reduced-data: reduce)').matches;
+  if (reduced || !navigator.onLine) {
+    for (let i=0;i<3;i++) addAvatar(svgFallback());
+    return;
+  }
+
+  // Cache for 24h
+  const KEY = 'sp-avatars-24h-v2';
+  const DAY = 24 * 60 * 60 * 1000;
+  try {
+    const cached = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (cached && Date.now() - cached.t < DAY && Array.isArray(cached.urls) && cached.urls.length === 3) {
+      cached.urls.forEach(u => addAvatar(u));
+      return;
+    }
+  } catch(_) {}
+
+  // Preferred gaming/tech-heavy nationalities (ISO codes used by randomuser)
+  const preferredNats = ['US','CA','GB','DE','SE','NL','BR','KR','JP'];
+
+  // Fetch a larger pool, then filter/select for diversity
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(), 6000);
+
+  fetch('https://randomuser.me/api/?results=24&inc=picture,gender,nat,dob&noinfo', { signal: controller.signal })
+    .then(r => r.ok ? r.json() : Promise.reject(r))
+    .then(json => {
+      clearTimeout(timeout);
+      let candidates = (json?.results || []).map(u => ({
+        url: u.picture?.thumbnail,
+        gender: u.gender,         // 'male' | 'female'
+        nat: (u.nat || '').toUpperCase(),
+        age: u.dob?.age ?? 0
+      }));
+
+      // Age filter: 18–40
+      candidates = candidates.filter(c => c.age >= 18 && c.age <= 40);
+
+      // Weight preferred nationalities higher
+      const weighted = candidates.flatMap(c => preferredNats.includes(c.nat) ? [c,c] : [c]);
+
+      // Shuffle
+      for (let i = weighted.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [weighted[i], weighted[j]] = [weighted[j], weighted[i]];
+      }
+
+      // Try to build a diverse trio
+      const byGender = {
+        male: weighted.filter(x => x.gender === 'male'),
+        female: weighted.filter(x => x.gender === 'female')
+      };
+
+      const pickSet = new Set();
+      const usedNats = new Set();
+
+      function tryPick(list){
+        for (const c of list) {
+          if (!c.url || pickSet.has(c.url)) continue;
+          if (usedNats.has(c.nat) && pickSet.size < 2) continue; // push early nat variety
+          pickSet.add(c.url); usedNats.add(c.nat);
+          addAvatar(c.url);
+          if (pickSet.size === 3) return true;
+        }
+        return false;
+      }
+
+      let done = false;
+      if (byGender.male.length && byGender.female.length) {
+        tryPick(byGender.male);
+        if (pickSet.size < 3) tryPick(byGender.female);
+        if (pickSet.size < 3) done = tryPick(weighted);
+      }
+
+      while (!done && pickSet.size < 3) {
+        done = tryPick(weighted);
+        if (!done && pickSet.size < 3) break;
+      }
+
+      if (pickSet.size === 0) {
+        for (let i=0;i<3;i++) addAvatar(svgFallback());
+        return;
+      }
+
+      while (pickSet.size < 3) { addAvatar(svgFallback()); pickSet.add('svg-'+pickSet.size); }
+
+      const urls = Array.from(pickSet).filter(u => typeof u === 'string' && u.startsWith('http'));
+      try { localStorage.setItem(KEY, JSON.stringify({ t: Date.now(), urls: urls.slice(0,3) })); } catch(_) {}
+    })
+    .catch(() => {
+      clearTimeout(timeout);
+      for (let i=0;i<3;i++) addAvatar(svgFallback());
+    });
+})();
+</script>
+<script>
+(() => {
+  const track = document.getElementById('bf-carousel');
+  const dotsWrap = document.getElementById('bf-dots');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function buildDots(){
+    dotsWrap.innerHTML = '';
+    if (!track) return;
+    const pages = Math.max(1, Math.round(track.scrollWidth / track.clientWidth));
+    for (let i=0;i<Math.min(pages, 7); i++){
+      const d = document.createElement('div');
+      d.className = 'dot' + (i===0 ? ' active':'');
+      dotsWrap.appendChild(d);
+    }
+  }
+
+  function syncDots(){
+    if (!track || !dotsWrap.children.length) return;
+    const ratio = track.scrollLeft / Math.max(1, track.scrollWidth - track.clientWidth);
+    const idx = Math.min(dotsWrap.children.length - 1, Math.round(ratio * (dotsWrap.children.length - 1)));
+    [...dotsWrap.children].forEach((el,i)=> el.classList.toggle('active', i===idx));
+  }
+
+  function ensureLoop(){
+    if (!track) return;
+    if (track.dataset.looped) return;
+    const items = [...track.children];
+    items.forEach(n => track.appendChild(n.cloneNode(true)));
+    track.dataset.looped = '1';
+  }
+
+  let raf, dir = 1;
+  function step(){
+    if (!track) return;
+    track.scrollLeft += dir * 0.5;
+    const max = track.scrollWidth - track.clientWidth - 1;
+    if (track.scrollLeft <= 0) dir = 1;
+    if (track.scrollLeft >= max) dir = -1;
+    syncDots();
+    raf = requestAnimationFrame(step);
+  }
+  function start(){ if (!reduced && !raf) raf = requestAnimationFrame(step); }
+  function stop(){ if (raf){ cancelAnimationFrame(raf); raf = null; } }
+
+  if (track){
+    ensureLoop();
+    buildDots();
+    syncDots();
+    window.addEventListener('resize', () => { buildDots(); syncDots(); });
+
+    if (!reduced){
+      setTimeout(start, 500);
+      ['mouseenter','touchstart','focusin'].forEach(ev => track.addEventListener(ev, stop, {passive:true}));
+      ['mouseleave','touchend','focusout'].forEach(ev => track.addEventListener(ev, start, {passive:true}));
+    }
+
+    track.addEventListener('keydown', (e)=>{
+      if (e.key === 'ArrowRight') track.scrollLeft += 80;
+      if (e.key === 'ArrowLeft') track.scrollLeft -= 80;
+      syncDots();
+    });
+  }
+
+  const io = new IntersectionObserver((ents)=>{
+    ents.forEach(e=>{ if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+  document.querySelectorAll('#built-for .reveal').forEach(el=> io.observe(el));
+})();
+</script>
+<script>
+(() => {
+  // Staggered reveal on scroll for spotlight tiles
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach((e, idx)=>{
+      if (e.isIntersecting){
+        setTimeout(()=> e.target.classList.add('in'), idx*80);
+        io.unobserve(e.target);
+      }
+    });
+  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.15 });
+
+  document.querySelectorAll('#spotlight .reveal').forEach(el => io.observe(el));
+})();
+</script>
+<script>
+// Reveal-in for Built-for tiles with stagger
+(function(){
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cards = Array.from(document.querySelectorAll('#built-for .bf-row .bf-card'));
+  if (!cards.length) return;
+  if (prefersReduced){ cards.forEach(n=> n.classList.add('is-visible')); return; }
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if (e.isIntersecting){
+        const idx = cards.indexOf(e.target);
+        setTimeout(()=> e.target.classList.add('is-visible'), Math.max(0, idx) * 90);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  cards.forEach(n=> io.observe(n));
+})();
+</script>
+<!-- Global gradient defs (re-usable) -->
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+  <defs>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#8A2BE2"/>
+      <stop offset="100%" stop-color="#4FACFE"/>
+    </linearGradient>
+  </defs>
+</svg>
+</body>
+</html>

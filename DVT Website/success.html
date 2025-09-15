@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Joined the Waitlist — Live Call Translator for Discord</title>
+  <meta name="description" content="Thanks for joining the waitlist for Live Call Translator for Discord. We’ll email you with early access updates." />
+  <link rel="canonical" href="/" />
+
+  <!-- Favicon / touch icon (uses project logo) -->
+  <link rel="icon" type="image/png" href="assets/logo.png" />
+  <link rel="apple-touch-icon" href="assets/logo.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="You’re on the waitlist — Live Call Translator" />
+  <meta property="og:description" content="Thanks for joining! We’ll email you with early access updates." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="assets/logo.png" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="You’re on the waitlist — Live Call Translator" />
+  <meta name="twitter:description" content="Thanks for joining! We’ll email you with early access updates." />
+  <meta name="twitter:image" content="assets/logo.png" />
+
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --panel: 255 255 255 / 6%;
+      --border: 255 255 255 / 10%;
+      --text:#e9edf5;
+      --muted:#a6afc3;
+      --accent1:#6ea8ff;
+      --accent2:#9d7cff;
+      --glow: 72, 122, 255;
+      --radius: 20px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      background: radial-gradient(1200px 800px at 70% 10%, rgba(109,90,255,.14), transparent 60%),
+                  radial-gradient(1000px 700px at 20% 90%, rgba(75,170,255,.10), transparent 55%),
+                  var(--bg);
+      font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+      overflow:hidden;
+    }
+
+    /* star specks */
+    .specks::before, .specks::after{
+      content:"";
+      position:absolute; inset:0; pointer-events:none;
+      background-image:
+        radial-gradient(2px 2px at 15% 35%, rgba(255,255,255,.35) 50%, transparent),
+        radial-gradient(2px 2px at 55% 65%, rgba(255,255,255,.25) 50%, transparent),
+        radial-gradient(2px 2px at 75% 20%, rgba(255,255,255,.25) 50%, transparent),
+        radial-gradient(2px 2px at 30% 80%, rgba(255,255,255,.20) 50%, transparent);
+      background-repeat:no-repeat;
+      animation: drift 22s linear infinite;
+    }
+    .specks::after{ animation-duration: 28s; opacity:.6; }
+
+    @keyframes drift { 
+      from { transform: translateY(0) } 
+      to   { transform: translateY(-12px) } 
+    }
+
+    /* container */
+    .wrap{
+      position:relative;
+      width: min(100%, 1200px);
+      margin: 0 auto;
+      padding: 48px 24px;
+      height: 100%;
+      display:grid;
+      place-items:center;
+    }
+
+    /* glass card */
+    .card{
+      position:relative;
+      width:min(780px, 92vw);
+      padding: 36px 28px 28px;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(var(--panel)) 0%, rgba(255,255,255,0.03) 100%);
+      border: 1px solid rgba(var(--border));
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 20px 80px rgba(0,0,0,.45),
+        0 0 80px rgba(var(--glow), .12);
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:10px; margin-bottom: 14px; opacity:.92;
+    }
+    .brand img{ width:28px; height:28px; border-radius:8px; display:block }
+    .brand span{ font-weight:600; font-size:14px; color:var(--muted) }
+
+    .title{
+      font-size: clamp(26px, 4vw, 40px);
+      letter-spacing:-0.02em;
+      font-weight:800;
+      margin: 6px 0 10px;
+      background: linear-gradient(90deg, var(--accent1), var(--accent2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+
+    .lead{ color:var(--muted); margin:0 0 18px }
+
+    /* animated check badge */
+    .check{
+      --size: 64px;
+      width:var(--size); height:var(--size);
+      border-radius:16px;
+      display:grid; place-items:center;
+      background: radial-gradient(100% 100% at 30% 20%, #7da8ff 0%, #8c7bff 100%);
+      box-shadow: 0 8px 35px rgba(118,100,255,.25);
+      margin: 6px 0 14px;
+      position: relative;
+      overflow:hidden;
+    }
+    .check svg{ width:34px; height:34px; color:white; transform: scale(.4); opacity:0; animation: pop .6s forwards .12s }
+    @keyframes pop { to { transform: scale(1); opacity:1 } }
+
+    /* progress / countdown */
+    .progress{
+      height:4px; border-radius:999px;
+      background: rgba(255,255,255,.08);
+      overflow:hidden; margin: 18px 0 6px;
+    }
+    .progress > i{
+      display:block; height:100%; width:0%;
+      background: linear-gradient(90deg, var(--accent1), var(--accent2));
+      box-shadow: 0 0 12px rgba(157,124,255,.45);
+      transition: width .18s ease;
+    }
+    .muted{ color:var(--muted); font-size:14px }
+
+    /* CTAs */
+    .actions{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap }
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,.16);
+      padding:10px 14px; border-radius:12px; font-weight:600;
+      color:var(--text); background:rgba(255,255,255,.06);
+      transition: transform .15s ease, border-color .15s, background .15s;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,.3) }
+    .btn.primary{
+      background: linear-gradient(90deg, var(--accent1), var(--accent2));
+      border-color:transparent; color:white;
+      box-shadow: 0 10px 30px rgba(110,168,255,.25);
+    }
+    .btn.primary:hover{ filter:brightness(1.03) }
+
+    /* reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      .specks::before, .specks::after { animation:none }
+      .check svg { animation:none; transform:none; opacity:1 }
+    }
+
+    /* canvas layer for confetti */
+    canvas#confetti{
+      position:fixed; inset:0; pointer-events:none; z-index:2;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+  <div class="wrap specks">
+    <main class="card" role="main" aria-labelledby="title">
+      <div class="brand">
+        <img src="assets/logo.png" alt="Live Call Translator logo">
+        <span>Live Call Translator for Discord</span>
+      </div>
+
+      <div class="check" aria-hidden="true">
+        <!-- simple check icon -->
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 7L10 17l-6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <h1 id="title" class="title">You’re on the waitlist 🎉</h1>
+      <p class="lead">We’ll email you at the address you provided with early access updates.</p>
+
+      <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+      <p class="muted">Taking you back to the homepage in <span id="secs">8</span>s…</p>
+
+      <div class="actions">
+        <a class="btn primary" href="/">Back to homepage</a>
+        <a class="btn" href="https://twitter.com/intent/follow?screen_name=" target="_blank" rel="noopener">Follow updates</a>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Progress + redirect
+    (function(){
+      const total = 8; // seconds
+      const secs = document.getElementById('secs');
+      const bar  = document.getElementById('bar');
+      let t = total;
+      const tick = () => {
+        t -= 1;
+        secs.textContent = Math.max(0, t);
+        bar.style.width = ((total - t) / total * 100) + '%';
+        if (t <= 0) { location.href = '/' }
+      };
+      // start filled a bit for nicer feel
+      bar.style.width = '10%';
+      const id = setInterval(tick, 1000);
+      setTimeout(() => clearInterval(id), (total+1)*1000);
+    })();
+
+    // Confetti (tiny canvas burst), disabled for reduced motion
+    (function(){
+      const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+      if (media.matches) return;
+
+      const c = document.getElementById('confetti');
+      const ctx = c.getContext('2d');
+      let W, H; const DPR = Math.min(2, window.devicePixelRatio || 1);
+      function resize(){
+        W = c.width  = Math.floor(innerWidth * DPR);
+        H = c.height = Math.floor(innerHeight * DPR);
+      }
+      resize(); addEventListener('resize', resize);
+
+      const N = 120;
+      const parts = Array.from({length:N}, () => ({
+        x: Math.random()*W, y: -20*DPR,
+        r: 4 + Math.random()*5,
+        vx: (Math.random()-.5)*1.2*DPR,
+        vy: (1.5 + Math.random()*2.2)*DPR,
+        a: Math.random()*Math.PI*2,
+        s: .02 + Math.random()*.04,
+        c: Math.random()<.5 ? '#6ea8ff' : '#9d7cff'
+      }));
+
+      let life = 0, maxLife = 160;
+      function frame(){
+        ctx.clearRect(0,0,W,H);
+        for (const p of parts){
+          p.x += p.vx; p.y += p.vy; p.a += p.s;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.a);
+          ctx.fillStyle = p.c;
+          ctx.fillRect(-p.r, -p.r*.6, p.r*2, p.r*1.2);
+          ctx.restore();
+        }
+        life++;
+        if (life < maxLife) requestAnimationFrame(frame);
+        else ctx.clearRect(0,0,W,H);
+      }
+      // slight delay to sync with check pop
+      setTimeout(()=>requestAnimationFrame(frame), 120);
+    })();
+  </script>
+</body>
+</html>
+
